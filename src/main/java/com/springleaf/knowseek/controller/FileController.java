@@ -1,6 +1,6 @@
 package com.springleaf.knowseek.controller;
 
-import com.springleaf.knowseek.service.FileService;
+import com.springleaf.knowseek.service.impl.FileServiceImpl;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -20,7 +20,7 @@ import java.util.*;
 public class FileController {
 
     @Autowired
-    private FileService fileService;
+    private FileServiceImpl fileService;
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
