@@ -10,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileUploadChunkDTO {
 
     /**
-     * 文用于唯一标识文件
+     * 用于唯一标识文件
      */
     private String uploadId;
 

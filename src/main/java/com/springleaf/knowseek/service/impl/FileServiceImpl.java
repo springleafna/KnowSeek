@@ -1,16 +1,28 @@
 package com.springleaf.knowseek.service.impl;
 
-import com.springleaf.knowseek.config.FileConfig;
+import cn.dev33.satoken.stp.StpUtil;
+import com.aliyun.oss.OSS;
+import com.aliyun.oss.model.InitiateMultipartUploadRequest;
+import com.aliyun.oss.model.InitiateMultipartUploadResult;
+import com.springleaf.knowseek.config.OssConfig;
+import com.springleaf.knowseek.constans.RedisKeyConstant;
+import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
+import com.springleaf.knowseek.mapper.FileUploadMapper;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
+import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
+import com.springleaf.knowseek.model.entity.FileUpload;
+import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -18,7 +30,11 @@ import java.util.*;
 @RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
 
-    private final FileConfig fileConfig;
+    private final OssConfig ossConfig;
+    private final OSS ossClient;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final FileUploadMapper fileUploadMapper;
+
 
     /**
      * 支持的文档类型扩展名（可以被Apache Tika解析并向量化的文件类型）
@@ -85,80 +101,6 @@ public class FileServiceImpl implements FileService {
             "bin", "dat", "iso", "img"
     ));
 
-    public void ensureUploadDir() {
-        File dir = new File(fileConfig.getUploadDir());
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-    }
-
-    public void saveChunk(String uploadId, String fileName, int chunkIndex, InputStream inputStream) throws IOException {
-        ensureUploadDir();
-        String chunkDir = fileConfig.getUploadDir() + "/" + uploadId;
-        File dir = new File(chunkDir);
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-
-        File chunkFile = new File(chunkDir, "chunk." + chunkIndex);
-        try (FileOutputStream fos = new FileOutputStream(chunkFile)) {
-            IOUtils.copy(inputStream, fos);
-        }
-    }
-
-    public Set<Integer> getUploadedChunks(String uploadId) {
-        Set<Integer> uploaded = new HashSet<>();
-        String chunkDir = fileConfig.getUploadDir() + "/" + uploadId;
-        File dir = new File(chunkDir);
-        if (!dir.exists()) return uploaded;
-
-        File[] files = dir.listFiles((d, name) -> name.startsWith("chunk."));
-        if (files != null) {
-            for (File f : files) {
-                try {
-                    String suffix = f.getName().split("\\.")[1];
-                    uploaded.add(Integer.parseInt(suffix));
-                } catch (Exception e) {
-                    // 忽略非法文件名
-                }
-            }
-        }
-        return uploaded;
-    }
-
-    public String mergeChunks(String uploadId, String fileName, int totalChunks) throws IOException {
-        String chunkDir = fileConfig.getUploadDir() + "/" + uploadId;
-        String targetPath = fileConfig.getUploadDir() + "/" + fileName;
-
-        try (FileOutputStream fos = new FileOutputStream(targetPath)) {
-            for (int i = 0; i < totalChunks; i++) {
-                File chunk = new File(chunkDir, "chunk." + i);
-                if (!chunk.exists()) {
-                    throw new RuntimeException("分片丢失: " + i);
-                }
-                try (FileInputStream fis = new FileInputStream(chunk)) {
-                    IOUtils.copy(fis, fos);
-                }
-            }
-        }
-
-        deleteChunkDir(uploadId);
-        return targetPath;
-    }
-
-    public void deleteChunkDir(String uploadId) {
-        String chunkDir = fileConfig.getUploadDir() + "/" + uploadId;
-        File dir = new File(chunkDir);
-        if (dir.exists()) {
-            Arrays.stream(dir.listFiles()).forEach(File::delete);
-            dir.delete();
-        }
-    }
-
-    public FileConfig getFileConfig() {
-        return fileConfig;
-    }
-
     @Override
     public void uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) {
         // 文件类型验证（仅在第一个分片时进行验证）
@@ -169,6 +111,53 @@ public class FileServiceImpl implements FileService {
         String fileType = getFileType(fileUploadChunkDTO.getFileName());
         String contentType = fileUploadChunkDTO.getFile().getContentType();
 
+    }
+
+    @Override
+    public UploadInitVO initFileUpload(FileUploadChunkInitDTO fileUploadChunkInitDTO) {
+        String fileName = fileUploadChunkInitDTO.getFileName();
+        String fileMd5 = fileUploadChunkInitDTO.getFileMd5();
+        Long userId = StpUtil.getLoginIdAsLong();
+        // 根据文件Md5值和用户ID判断文件是否以及被上传成功（秒传逻辑）
+        if (fileUploadMapper.existFileUpload(fileMd5, userId, UploadStatusEnum.COMPLETED.getStatus())) {
+            log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
+            return new UploadInitVO(true, null);
+        }
+        // 未秒传，进行文件上传OSS初始化
+        InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(
+                ossConfig.getBucketName(), fileName);
+
+        InitiateMultipartUploadResult result = ossClient.initiateMultipartUpload(request);
+
+        // 获取文件上传初始化的uploadId
+        String uploadId = result.getUploadId();
+
+        // 将文件上传信息保存到数据库，设置上传状态为上传中
+        FileUpload fileUpload = new FileUpload();
+        fileUpload.setFileName(fileName);
+        fileUpload.setFileMd5(fileMd5);
+        fileUpload.setStatus(UploadStatusEnum.UPLOADING.getStatus());
+        fileUpload.setUserId(userId);
+        if (fileUploadMapper.saveFileUpload(fileUpload) < 1) {
+            throw new BusinessException("保存文件上传信息失败");
+        }
+
+        // 将文件上传信息存入Redis
+        // 获取当前时间
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String nowStr = now.format(formatter);
+
+        String redisKey = RedisKeyConstant.FILE_UPLOAD_INIT_KEY.formatted(uploadId);
+        Map<String, String> redisValue = new HashMap<>();
+        redisValue.put("fileName", fileName);
+        redisValue.put("fileMd5", fileMd5);
+        redisValue.put("userId", String.valueOf(userId));
+        redisValue.put("initTime", nowStr);
+
+        stringRedisTemplate.opsForHash().putAll(redisKey, redisValue);
+
+        return new UploadInitVO(false, uploadId);
     }
 
     /**
