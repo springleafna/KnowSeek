@@ -34,7 +34,7 @@ public class Result<T> {
         return new Result<>(ResultCodeEnum.SUCCESS.getCode(), ResultCodeEnum.SUCCESS.getMessage(), null);
     }
 
-    public static <T> Result<T> success(String message) {
+    public static Result<Void> successMsg(String message) {
         return new Result<>(ResultCodeEnum.SUCCESS.getCode(), message, null);
     }
 

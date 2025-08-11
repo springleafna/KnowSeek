@@ -10,19 +10,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileUploadChunkDTO {
 
     /**
-     * 文件的MD5值，用于唯一标识文件
+     * 文用于唯一标识文件
      */
-    private String fileMD5;
+    private String uploadId;
 
     /**
      * 分片索引，表示当前分片的位置
      */
     private Integer chunkIndex;
-
-    /**
-     * 文件总大小
-     */
-    private Integer totalSize;
 
     /**
      * 文件名
