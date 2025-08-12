@@ -35,9 +35,9 @@ public class FileController {
      * 上传单个分片
      */
     @PostMapping("/chunk")
-    public Result<?> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) throws IOException {
-        fileService.uploadChunk(fileUploadChunkDTO);
-        return Result.success();
+    public Result<String> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) throws IOException {
+        String eTag = fileService.uploadChunk(fileUploadChunkDTO);
+        return Result.success(eTag);
     }
 
     /**
@@ -47,5 +47,21 @@ public class FileController {
     public Result<String> completeChunkUpload(@RequestBody FileUploadCompleteDTO fileUploadCompleteDTO) {
         String location = fileService.completeChunkUpload(fileUploadCompleteDTO);
         return Result.success(location);
+    }
+
+    /**
+     * 暂停上传
+     */
+    @PostMapping("/pause")
+    public Result<?> pauseUpload(@RequestBody FileUploadPauseDTO fileUploadPauseDTO) {
+        return Result.success();
+    }
+
+    /**
+     * 取消上上传
+     */
+    @PostMapping("/cancel")
+    public Result<?> cancelUpload(@RequestBody FileUploadPauseDTO fileUploadPauseDTO) {
+        return Result.success();
     }
 }

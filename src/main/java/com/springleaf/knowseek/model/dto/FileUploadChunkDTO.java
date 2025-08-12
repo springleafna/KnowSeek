@@ -34,4 +34,10 @@ public class FileUploadChunkDTO {
      */
     @NotNull(message = "分片文件不能为空")
     private MultipartFile file;
+
+    /**
+     * 分片Md5
+     */
+    @NotBlank(message = "分片文件Md5不能为空")
+    private String chunkMd5;
 }

@@ -13,7 +13,7 @@ public interface FileService {
     /**
      * 分片文件上传
      */
-    void uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) throws IOException;
+    String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) throws IOException;
 
     /**
      * 文件上传初始化

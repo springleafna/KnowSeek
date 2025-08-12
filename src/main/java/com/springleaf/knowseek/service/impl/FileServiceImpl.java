@@ -3,7 +3,6 @@ package com.springleaf.knowseek.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.*;
-import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.config.OssConfig;
 import com.springleaf.knowseek.constans.RedisKeyConstant;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
@@ -17,14 +16,12 @@ import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.IOUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -105,51 +102,6 @@ public class FileServiceImpl implements FileService {
     ));
 
     @Override
-    public void uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) throws IOException {
-        // 文件类型验证（仅在第一个分片时进行验证）
-        if (fileUploadChunkDTO.getChunkIndex() == 0) {
-            validateFileType(fileUploadChunkDTO.getFileName());
-        }
-        // 获取文件类型信息
-        String fileType = getFileType(fileUploadChunkDTO.getFileName());
-        String contentType = fileUploadChunkDTO.getFile().getContentType();
-
-        String uploadId = fileUploadChunkDTO.getUploadId();
-        Integer chunkIndex = fileUploadChunkDTO.getChunkIndex();
-        String fileName = fileUploadChunkDTO.getFileName();
-        MultipartFile chunkFile = fileUploadChunkDTO.getFile();
-
-        // 创建上传分片请求
-        UploadPartRequest uploadPartRequest = new UploadPartRequest();
-        uploadPartRequest.setBucketName(ossConfig.getBucketName());
-        uploadPartRequest.setKey(fileName);
-        uploadPartRequest.setUploadId(uploadId);
-        uploadPartRequest.setPartNumber(chunkIndex);
-        uploadPartRequest.setInputStream(chunkFile.getInputStream());
-        uploadPartRequest.setPartSize(chunkFile.getSize());
-
-        // 上传分片到OSS
-        UploadPartResult uploadPartResult = ossClient.uploadPart(uploadPartRequest);
-        // 获取eTag
-        String eTag = uploadPartResult.getETag();
-
-        // 将分片信息保存到Redis中
-        String chunkKey = String.format(RedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, chunkIndex);
-        stringRedisTemplate.opsForHash().put(chunkKey, "eTag", eTag);
-        stringRedisTemplate.opsForHash().putIfAbsent(chunkKey, "fileName", fileName);
-        stringRedisTemplate.opsForHash().putIfAbsent(chunkKey, "contentType", contentType);
-        stringRedisTemplate.opsForHash().putIfAbsent(chunkKey, "fileType", fileType);
-
-        // 设置Redis BitMap 中该分片的状态为已上传
-        String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
-        stringRedisTemplate.opsForValue().setBit(chunkStatusKey, chunkIndex - 1, true);
-
-        // 保存分片 ETag 有序列表
-        String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
-        stringRedisTemplate.opsForZSet().add(chunkETagKey, eTag, System.currentTimeMillis());
-    }
-
-    @Override
     public UploadInitVO initFileUpload(FileUploadChunkInitDTO fileUploadChunkInitDTO) {
         String fileName = fileUploadChunkInitDTO.getFileName();
         String fileMd5 = fileUploadChunkInitDTO.getFileMd5();
@@ -200,73 +152,125 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) throws IOException {
+        try {
+            String uploadId = fileUploadChunkDTO.getUploadId();
+            Integer chunkIndex = fileUploadChunkDTO.getChunkIndex();
+            String chunkMd5 = fileUploadChunkDTO.getChunkMd5();
+            String fileName = fileUploadChunkDTO.getFileName();
+            MultipartFile chunkFile = fileUploadChunkDTO.getFile();
+
+            // 校验分片编号
+            if (chunkIndex < 1) {
+                throw new BusinessException("分片编号必须从1开始");
+            }
+
+            String chunkInfoKey = String.format(RedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, chunkIndex);
+            // 检查分片是否已上传
+            if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(chunkInfoKey))) {
+                String redisChunkMd5 = (String) stringRedisTemplate.opsForHash().get(chunkInfoKey, "chunkMd5");
+                if (chunkMd5.equals(redisChunkMd5)) {
+                    return (String) stringRedisTemplate.opsForHash().get(chunkInfoKey, "eTag");
+                }
+            }
+
+            // 上传到OSS
+            UploadPartRequest request = new UploadPartRequest();
+            request.setBucketName(ossConfig.getBucketName());
+            request.setKey(fileName);
+            request.setUploadId(uploadId);
+            request.setPartNumber(chunkIndex);
+            request.setInputStream(chunkFile.getInputStream());
+            request.setPartSize(chunkFile.getSize());
+
+            UploadPartResult result = ossClient.uploadPart(request);
+            String eTag = result.getETag();
+
+            long chunkSize = chunkFile.getSize();
+            String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+            String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+
+            Map<String, String> chunkInfo = new HashMap<>();
+            chunkInfo.put("chunkMd5", chunkMd5);
+            chunkInfo.put("chunkSize", String.valueOf(chunkSize));
+            chunkInfo.put("eTag", eTag);
+            chunkInfo.put("fileName", fileName);
+            // 保存分片信息到Redis
+            stringRedisTemplate.opsForHash().putAll(chunkInfoKey, chunkInfo);
+
+            // 设置Redis BitMap 中该分片的状态为已上传
+            stringRedisTemplate.opsForValue().setBit(chunkStatusKey, chunkIndex - 1, true);
+
+            // 保存分片 ETag 有序列表
+            stringRedisTemplate.opsForZSet().add(chunkETagKey, eTag, chunkIndex);
+
+            return eTag;
+        } catch (Exception e) {
+            log.error("分片上传失败", e);
+            throw new BusinessException("分片上传失败: " + e.getMessage());
+        }
+    }
+
+    @Override
     public String completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO) {
         try {
             log.info("进行分片合并: {}", fileUploadCompleteDTO);
-
-            // TODO：验证 Redis BitMap 该文件分片是否都已上传
-
-
-            // TODO： 获取 Redis 中 分片 ETag 有序列表进行合并
-
             String fileName = fileUploadCompleteDTO.getFileName();
-            List<FileUploadCompleteDTO.PartETagInfo> partETagInfos = fileUploadCompleteDTO.getPartETagInfos();
             String uploadId = fileUploadCompleteDTO.getUploadId();
+            Integer chunkTotalSize = fileUploadCompleteDTO.getChunkTotalSize();
 
-            log.info("准备转换 PartETagInfo 列表, 大小: {}", partETagInfos != null ? partETagInfos.size() : "null");
-            if (partETagInfos != null) {
-                for (int i = 0; i < partETagInfos.size(); i++) {
-                    FileUploadCompleteDTO.PartETagInfo info = partETagInfos.get(i);
-                    // 【关键】打印每个 PartETagInfo 对象的详细信息
-                    log.info("PartETagInfo[{}]: partNumber={}, eTag={}, info.toString()='{}'",
-                            i, info.getPartNumber(), info.getETag(), info.toString());
-                    // 【关键】检查是否有 null 值
-                    if (info.getETag() == null) {
-                        log.error("发现 ETag 为 null 的 PartETagInfo: {}", info);
-                        throw new BusinessException("客户端传递了无效的分片信息 (ETag 为空)");
-                    }
-                    if (info.getPartNumber() == null) {
-                        log.error("发现 partNumber 为 null 的 PartETagInfo: {}", info);
-                        throw new BusinessException("客户端传递了无效的分片信息 (partNumber 为空)");
+            String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+            String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+
+            // 验证 Redis BitMap 该文件分片是否都已上传
+            for (int i = 0; i < chunkTotalSize; i++) {
+                Boolean isUploaded = stringRedisTemplate.opsForValue().getBit(chunkStatusKey, i);
+                // TODO：这里需要记录未上传的分片索引，返回给前端重新上传
+                if (Boolean.FALSE.equals(isUploaded)) {
+                    throw new BusinessException("存在分片未上传");
+                }
+            }
+            // 获取 Redis 中 分片 ETag 有序列表进行合并
+            // 从ZSet中按score（即chunkIndex）顺序获取所有ETag
+            Set<ZSetOperations.TypedTuple<String>> tuples =
+                    stringRedisTemplate.opsForZSet().rangeWithScores(chunkETagKey, 0, -1);
+
+            List<PartETag> partETags = new ArrayList<>();
+
+            if (tuples != null) {
+                for (ZSetOperations.TypedTuple<String> tuple : tuples) {
+                    if (tuple.getValue() != null && tuple.getScore() != null) {
+                        int partNumber = tuple.getScore().intValue(); // score就是chunkIndex
+                        String eTag = tuple.getValue();
+                        partETags.add(new PartETag(partNumber, eTag));
                     }
                 }
-            } else {
-                log.error("客户端传递的 partETagInfos 为 null");
-                throw new BusinessException("客户端未传递分片信息");
             }
 
-            // 将PartETagInfo转换为OSS SDK的PartETag
-            List<PartETag> partTags = partETagInfos.stream()
-                    .map(info -> {
-                        // 【关键】在创建 PartETag 前再次记录
-                        log.debug("正在创建 OSS PartETag: partNumber={}, eTag={}", info.getPartNumber(), info.getETag());
-                        PartETag pt = new PartETag(info.getPartNumber(), info.getETag());
-                        // 【关键】创建后检查 OSS PartETag
-                        log.debug("创建的 OSS PartETag: partNumber={}, eTag={}, getPartNumber()={}, getETag()='{}'",
-                                info.getPartNumber(), info.getETag(), pt.getPartNumber(), pt.getETag());
-                        return pt;
-                    })
-                    .sorted(Comparator.comparingInt(PartETag::getPartNumber))
-                    .collect(Collectors.toList());
-
-            log.info("转换后的 OSS PartETag 列表: {}", partTags);
+            // 按PartNumber排序（ZSet已经是有序的，但保险起见）
+            partETags.sort(Comparator.comparing(PartETag::getPartNumber));
 
             // 创建完成上传请求
             CompleteMultipartUploadRequest completeRequest =
                     new CompleteMultipartUploadRequest(ossConfig.getBucketName(),
-                            fileName, uploadId, partTags);
+                            fileName, uploadId, partETags);
 
             // 完成分片上传（合并分片）
             CompleteMultipartUploadResult completeUploadResult =
                     ossClient.completeMultipartUpload(completeRequest);
             String location = completeUploadResult.getLocation();
 
-            // TODO：设置数据库该文件下载路径
-
+            // TODO：设置数据库该文件OSS路径
+            if (fileUploadMapper.updateOSSLocation(location) < 1) {
+                throw new BusinessException("文件OSS路径设置失败");
+            }
             // TODO：设置数据库该文件上传状态为上传完成
-
+            if (fileUploadMapper.updateUploadStatus(UploadStatusEnum.COMPLETED.getStatus()) < 1) {
+                throw new BusinessException("文件上传状态更新失败");
+            }
             // TODO：清除 Redis 中相关分片信息
 
+            // TODO：清除 Redis 中分片状态信息
             // 返回最终结果
             return location;
         } catch (Exception e) {

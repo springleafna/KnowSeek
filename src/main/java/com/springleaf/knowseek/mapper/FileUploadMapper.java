@@ -20,4 +20,8 @@ public interface FileUploadMapper {
      */
     @Select("SELECT * FROM tb_pai_smart WHERE file_md5 = #{fileMd5} AND user_id = #{userId} AND status = #{status}")
     boolean existFileUpload(@Param("fileMd5") String fileMd5, @Param("userId") Long userId, @Param("status") int status);
+
+    int updateOSSLocation(String location);
+
+    int updateUploadStatus(int status);
 }
