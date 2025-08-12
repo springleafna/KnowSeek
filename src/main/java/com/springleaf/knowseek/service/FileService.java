@@ -3,6 +3,7 @@ package com.springleaf.knowseek.service;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
+import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 
 import java.io.IOException;
@@ -23,5 +24,5 @@ public interface FileService {
     /**
      * 完成分片上传，进行合并
      */
-    String completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO);
+    UploadCompleteVO completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO);
 }

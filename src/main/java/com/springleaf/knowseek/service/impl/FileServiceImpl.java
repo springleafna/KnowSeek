@@ -12,6 +12,7 @@ import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
 import com.springleaf.knowseek.model.entity.FileUpload;
+import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.service.FileService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -110,8 +112,8 @@ public class FileServiceImpl implements FileService {
 
         try {
             // 根据文件Md5值和用户ID判断文件是否以及被上传成功（秒传逻辑）
-            boolean exists = fileUploadMapper.existFileUpload(fileMd5, userId, UploadStatusEnum.COMPLETED.getStatus());
-            if (exists) {
+            FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId, UploadStatusEnum.COMPLETED.getStatus());
+            if (fileUpload != null) {
                 log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
                 return new UploadInitVO(true, null);
             }
@@ -123,7 +125,7 @@ public class FileServiceImpl implements FileService {
             log.debug("初始化OSS多部分上传成功，uploadId: {}", uploadId);
 
             // 将文件上传信息保存到数据库，设置上传状态为上传中
-            FileUpload fileUpload = new FileUpload();
+            fileUpload = new FileUpload();
             fileUpload.setFileName(fileName);
             fileUpload.setFileMd5(fileMd5);
             fileUpload.setStatus(UploadStatusEnum.UPLOADING.getStatus());
@@ -135,14 +137,15 @@ public class FileServiceImpl implements FileService {
             log.debug("文件上传信息已保存到数据库，上传状态设置为上传中");
 
             // 将文件上传信息存入Redis
-            String redisKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
+            String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
             Map<String, String> redisValue = new HashMap<>();
+            redisValue.put("id", String.valueOf(fileUpload.getId()));
             redisValue.put("fileName", fileName);
             redisValue.put("fileMd5", fileMd5);
             redisValue.put("userId", String.valueOf(userId));
 
-            stringRedisTemplate.opsForHash().putAll(redisKey, redisValue);
-            log.debug("文件上传信息已存入Redis，key: {}", redisKey);
+            stringRedisTemplate.opsForHash().putAll(fileUploadInfoKey, redisValue);
+            log.debug("文件上传信息已存入Redis，key: {}", fileUploadInfoKey);
 
             return new UploadInitVO(false, uploadId);
         } catch (Exception e) {
@@ -212,7 +215,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public String completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO) {
+    public UploadCompleteVO completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO) {
         try {
             log.info("进行分片合并: {}", fileUploadCompleteDTO);
             String fileName = fileUploadCompleteDTO.getFileName();
@@ -221,58 +224,73 @@ public class FileServiceImpl implements FileService {
 
             String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
             String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+            String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
-            // 验证 Redis BitMap 该文件分片是否都已上传
+            // 1. 验证分片是否全部上传
+            List<Integer> pendingChunkIndexList = new ArrayList<>();
             for (int i = 0; i < chunkTotalSize; i++) {
+                // TODO：Bitmap 验证时的性能优化
                 Boolean isUploaded = stringRedisTemplate.opsForValue().getBit(chunkStatusKey, i);
-                // TODO：这里需要记录未上传的分片索引，返回给前端重新上传
+                // 记录未上传的分片索引
                 if (Boolean.FALSE.equals(isUploaded)) {
-                    throw new BusinessException("存在分片未上传");
+                    pendingChunkIndexList.add(i);
                 }
             }
-            // 获取 Redis 中 分片 ETag 有序列表进行合并
+            if (!pendingChunkIndexList.isEmpty()) {
+                // 将未上传的分片返回给前端重新上传
+                return new UploadCompleteVO(true, pendingChunkIndexList, null);
+            }
+
+            // TODO：需要在合并前加一个完整性比对（本地已上传分片数 vs OSS 已上传分片数），因为对 ETag 数据强依赖
+            // 2. 获取 Redis 中 分片 ETag 有序列表进行合并
             // 从ZSet中按score（即chunkIndex）顺序获取所有ETag
             Set<ZSetOperations.TypedTuple<String>> tuples =
                     stringRedisTemplate.opsForZSet().rangeWithScores(chunkETagKey, 0, -1);
-
-            List<PartETag> partETags = new ArrayList<>();
-
-            if (tuples != null) {
-                for (ZSetOperations.TypedTuple<String> tuple : tuples) {
-                    if (tuple.getValue() != null && tuple.getScore() != null) {
-                        int partNumber = tuple.getScore().intValue(); // score就是chunkIndex
-                        String eTag = tuple.getValue();
-                        partETags.add(new PartETag(partNumber, eTag));
-                    }
-                }
+            if (tuples.isEmpty()) {
+                throw new BusinessException("未找到分片 ETag 信息，无法合并文件");
             }
 
-            // 按PartNumber排序（ZSet已经是有序的，但保险起见）
-            partETags.sort(Comparator.comparing(PartETag::getPartNumber));
+            List<PartETag> partETags = tuples.stream()
+                    .map(tuple -> new PartETag(tuple.getScore().intValue(), tuple.getValue()))
+                    .toList();
 
-            // 创建完成上传请求
+            // 3. 执行 OSS 分片合并
             CompleteMultipartUploadRequest completeRequest =
                     new CompleteMultipartUploadRequest(ossConfig.getBucketName(),
                             fileName, uploadId, partETags);
 
             // 完成分片上传（合并分片）
-            CompleteMultipartUploadResult completeUploadResult =
-                    ossClient.completeMultipartUpload(completeRequest);
-            String location = completeUploadResult.getLocation();
+            CompleteMultipartUploadResult result;
+            try {
+                result = ossClient.completeMultipartUpload(completeRequest);
+            } catch (Exception e) {
+                throw new BusinessException("OSS 分片合并失败: " + e.getMessage());
+            }
+            String location = result.getLocation();
 
-            // TODO：设置数据库该文件OSS路径
-            if (fileUploadMapper.updateOSSLocation(location) < 1) {
+            // 4. 更新数据库记录
+            // 获取该分片归属的文件的id
+            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            // 更新文件OSS路径
+            if (fileUploadMapper.updateOSSLocation(id, location) < 1) {
                 throw new BusinessException("文件OSS路径设置失败");
             }
-            // TODO：设置数据库该文件上传状态为上传完成
-            if (fileUploadMapper.updateUploadStatus(UploadStatusEnum.COMPLETED.getStatus()) < 1) {
+            // 更新数据库该文件上传状态为上传完成
+            // TODO：可能出现数据库更新失败，状态不一致（OSS 文件已经在，但 DB 状态没更新）
+            if (fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.COMPLETED.getStatus()) < 1) {
                 throw new BusinessException("文件上传状态更新失败");
             }
-            // TODO：清除 Redis 中相关分片信息
+            // 5. 删除 Redis 分片相关的缓存（批量删除）
+            List<String> keysToDelete = new ArrayList<>();
+            for (int i = 1; i <= chunkTotalSize; i++) {
+                keysToDelete.add(String.format(RedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, i));
+            }
+            keysToDelete.add(chunkStatusKey);
+            keysToDelete.add(chunkETagKey);
+            keysToDelete.add(fileUploadInfoKey);
+            stringRedisTemplate.delete(keysToDelete);
 
-            // TODO：清除 Redis 中分片状态信息
-            // 返回最终结果
-            return location;
+            return new UploadCompleteVO(false, null, location);
         } catch (Exception e) {
             log.error("分片合并失败", e);
             throw new BusinessException("分片合并失败: " + e.getMessage());

@@ -1,27 +1,36 @@
 package com.springleaf.knowseek.mapper;
 
 import com.springleaf.knowseek.model.entity.FileUpload;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
 
 @Mapper
 public interface FileUploadMapper {
 
     /**
-     * 新增文件上传
+     * 新增文件上传记录
      */
-    @Insert("INSET INTO tb_tb_pai_smart")
     int saveFileUpload(FileUpload fileUpload);
 
     /**
-     * 判断是否该文件是否已经被上传成功
+     * 判断文件是否已上传成功
      */
-    @Select("SELECT * FROM tb_pai_smart WHERE file_md5 = #{fileMd5} AND user_id = #{userId} AND status = #{status}")
-    boolean existFileUpload(@Param("fileMd5") String fileMd5, @Param("userId") Long userId, @Param("status") int status);
+    FileUpload existFileUpload(@Param("fileMd5") String fileMd5,
+                            @Param("userId") Long userId,
+                            @Param("status") int status);
 
-    int updateOSSLocation(String location);
+    /**
+     * 更新文件的 OSS 地址
+     */
+    int updateOSSLocation(@Param("id") Long id, @Param("location") String location);
 
-    int updateUploadStatus(int status);
+    /**
+     * 更新文件上传状态
+     */
+    int updateUploadStatus(@Param("id") Long id, @Param("status") int status);
+
+    /**
+     * 根据 MD5 和用户 ID 查询文件详情
+     */
+    FileUpload findByMd5AndUserId(@Param("fileMd5") String fileMd5, @Param("userId") Long userId);
 }
+

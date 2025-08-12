@@ -1,5 +1,8 @@
 package com.springleaf.knowseek.exception;
 
+import lombok.Getter;
+
+@Getter
 public class BusinessException extends RuntimeException {
 
     /**
@@ -23,11 +26,4 @@ public class BusinessException extends RuntimeException {
         this.message = message;
     }
 
-    public Integer getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
-    }
 }

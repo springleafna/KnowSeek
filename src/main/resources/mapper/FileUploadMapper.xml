@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.springleaf.knowseek.mapper.FileUploadMapper">
+
     <resultMap id="resultMap" type="com.springleaf.knowseek.model.entity.FileUpload">
         <id property="id" column="id"/>
         <result property="fileMd5" column="file_md5"/>
@@ -10,10 +11,45 @@
         <result property="totalSize" column="total_size"/>
         <result property="orgTag" column="org_tag"/>
         <result property="isPublic" column="is_public"/>
+        <result property="location" column="location"/>
         <result property="createdAt" column="created_at"/>
         <result property="mergedAt" column="merged_at"/>
     </resultMap>
 
+    <!-- 新增文件上传记录 -->
+    <insert id="saveFileUpload" parameterType="com.springleaf.knowseek.model.entity.FileUpload" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO file_upload (
+            file_md5, file_name, total_size, status, user_id, org_tag, is_public, location
+        ) VALUES (
+                     #{fileMd5}, #{fileName}, #{totalSize}, #{status}, #{userId}, #{orgTag}, #{isPublic}, #{location}
+                 )
+    </insert>
 
+    <!-- 判断文件是否已上传成功 -->
+    <select id="existFileUpload" resultMap="resultMap">
+        SELECT * FROM file_upload WHERE file_md5 = #{fileMd5} AND user_id = #{userId} AND status = #{status}
+    </select>
+
+    <!-- 更新文件的 OSS 地址 -->
+    <update id="updateOSSLocation">
+        UPDATE file_upload
+        SET location = #{location}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新文件上传状态 -->
+    <update id="updateUploadStatus">
+        UPDATE file_upload
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据 MD5 和用户 ID 查询文件详情 -->
+    <select id="findByMd5AndUserId" resultType="com.springleaf.knowseek.model.entity.FileUpload">
+        SELECT *
+        FROM file_upload
+        WHERE file_md5 = #{fileMd5}
+          AND user_id = #{userId}
+    </select>
 
 </mapper>

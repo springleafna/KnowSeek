@@ -65,6 +65,12 @@ public class FileUpload {
     private Boolean isPublic;
 
     /**
+     * 阿里云OSS文件地址
+     * 对应字段：location，VARCHAR(255) DEFAULT NULL
+     */
+    private String location;
+
+    /**
      * 创建时间，记录文件上传请求的起始时间
      * 自动填充：DEFAULT CURRENT_TIMESTAMP
      * 对应字段：created_at，TIMESTAMP NOT NULL

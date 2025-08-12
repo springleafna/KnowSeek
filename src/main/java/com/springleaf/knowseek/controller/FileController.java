@@ -1,11 +1,11 @@
 package com.springleaf.knowseek.controller;
 
-import com.aliyun.oss.model.InitiateMultipartUploadRequest;
-import com.aliyun.oss.model.InitiateMultipartUploadResult;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
+import com.springleaf.knowseek.model.dto.FileUploadPauseDTO;
+import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.service.FileService;
 import jakarta.validation.Valid;
@@ -44,9 +44,9 @@ public class FileController {
      * 完成分片上传，进行合并
      */
     @PostMapping("/complete")
-    public Result<String> completeChunkUpload(@RequestBody FileUploadCompleteDTO fileUploadCompleteDTO) {
-        String location = fileService.completeChunkUpload(fileUploadCompleteDTO);
-        return Result.success(location);
+    public Result<UploadCompleteVO> completeChunkUpload(@RequestBody FileUploadCompleteDTO fileUploadCompleteDTO) {
+        UploadCompleteVO uploadCompleteVO = fileService.completeChunkUpload(fileUploadCompleteDTO);
+        return Result.success(uploadCompleteVO);
     }
 
     /**
