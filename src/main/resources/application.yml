@@ -39,10 +39,6 @@ sa-token:
   # 是否输出操作日志
   is-log: false
 
-file:
-  upload-dir: D:/uploads     # 测试上传文件的保存目录（绝对路径）
-  chunk-size: 5242880        # 5MB 分片
-
 aliyun:
   oss:
     endpoint: oss-cn-hangzhou.aliyuncs.com

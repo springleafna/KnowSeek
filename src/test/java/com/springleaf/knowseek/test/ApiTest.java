@@ -6,11 +6,20 @@ import com.aliyun.oss.common.auth.EnvironmentVariableCredentialsProvider;
 import com.aliyun.oss.common.comm.SignVersion;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
+import com.springleaf.knowseek.constans.RedisKeyConstant;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 
 public class ApiTest {
+
+
+    @Test
+    public void test_redisKey() {
+        String formatted = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, "123");
+        System.out.println(formatted);
+    }
+
 
     /**
      * 测试阿里云OSS文件上传

@@ -5,11 +5,14 @@ import com.aliyun.oss.model.InitiateMultipartUploadResult;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
+import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.service.FileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/file")
@@ -32,8 +35,17 @@ public class FileController {
      * 上传单个分片
      */
     @PostMapping("/chunk")
-    public Result<?> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) {
+    public Result<?> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) throws IOException {
+        fileService.uploadChunk(fileUploadChunkDTO);
+        return Result.success();
+    }
 
-
+    /**
+     * 完成分片上传，进行合并
+     */
+    @PostMapping("/complete")
+    public Result<String> completeChunkUpload(@RequestBody FileUploadCompleteDTO fileUploadCompleteDTO) {
+        String location = fileService.completeChunkUpload(fileUploadCompleteDTO);
+        return Result.success(location);
     }
 }

@@ -34,10 +34,6 @@ public class Result<T> {
         return new Result<>(ResultCodeEnum.SUCCESS.getCode(), ResultCodeEnum.SUCCESS.getMessage(), null);
     }
 
-    public static Result<Void> successMsg(String message) {
-        return new Result<>(ResultCodeEnum.SUCCESS.getCode(), message, null);
-    }
-
     public static <T> Result<T> error(String message) {
         return new Result<>(ResultCodeEnum.ERROR.getCode(), message, null);
     }
