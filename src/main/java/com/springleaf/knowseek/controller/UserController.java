@@ -20,7 +20,7 @@ public class UserController {
 
     @PostMapping("/login")
     public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO loginDTO) {
-        UserLoginVO userLoginVO =userService.login(loginDTO);
+        UserLoginVO userLoginVO = userService.login(loginDTO);
         return Result.success(userLoginVO);
     }
 

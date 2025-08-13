@@ -35,7 +35,7 @@ public class FileController {
      * 上传单个分片
      */
     @PostMapping("/chunk")
-    public Result<String> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) throws IOException {
+    public Result<String> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) {
         String eTag = fileService.uploadChunk(fileUploadChunkDTO);
         return Result.success(eTag);
     }

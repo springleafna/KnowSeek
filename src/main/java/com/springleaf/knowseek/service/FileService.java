@@ -14,7 +14,7 @@ public interface FileService {
     /**
      * 分片文件上传
      */
-    String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) throws IOException;
+    String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO);
 
     /**
      * 文件上传初始化

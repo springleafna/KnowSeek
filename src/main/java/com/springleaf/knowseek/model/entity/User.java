@@ -13,7 +13,7 @@ public class User {
     /**
      * 用户唯一标识
      */
-    private Long userId;
+    private Long id;
 
     /**
      * 用户名，唯一

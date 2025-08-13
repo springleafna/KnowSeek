@@ -155,7 +155,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) throws IOException {
+    public String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) {
         try {
             String uploadId = fileUploadChunkDTO.getUploadId();
             Integer chunkIndex = fileUploadChunkDTO.getChunkIndex();
@@ -289,6 +289,8 @@ public class FileServiceImpl implements FileService {
             keysToDelete.add(chunkETagKey);
             keysToDelete.add(fileUploadInfoKey);
             stringRedisTemplate.delete(keysToDelete);
+
+            // TODO：合并完成后需要根据 location 地址下载文件并发送 mq 消息进行文件的向量化处理
 
             return new UploadCompleteVO(false, null, location);
         } catch (Exception e) {
