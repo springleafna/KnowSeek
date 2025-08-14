@@ -4,7 +4,7 @@ spring:
   jackson:
     time-zone: GMT+8
   datasource:
-    url: jdbc:mysql://localhost:3306/PaiSmart?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/know_seek?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
     password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -17,17 +17,17 @@ spring:
       enabled: true
       max-file-size: 50MB # 单个文件的最大大小
       max-request-size: 100MB # 整个请求的最大大小
-
+mybatis:
+  mapper-locations: classpath:/mapper/*.xml
 logging:
   level:
-    com.springleaf.sweet.mapper: DEBUG
+    com.springleaf.knowseek.mapper: DEBUG
     org.apache.ibatis: DEBUG
     org.apache.ibatis.logging.stdout.StdOutImpl: DEBUG
-
 # Sa-Token配置
 sa-token:
   # token名称 (同时也是cookie名称)
-  token-name: sweet
+  token-name: knowseek
   # token有效期，单位s 默认30天, -1代表永不过期
   timeout: 2592000
   # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
@@ -38,7 +38,6 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: false
-
 # 阿里云OSS配置
 aliyun:
   oss:

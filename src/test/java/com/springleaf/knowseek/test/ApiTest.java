@@ -13,6 +13,14 @@ import java.io.File;
 
 public class ApiTest {
 
+    @Test
+    public void test_getEnv() {
+        String accessKeyId = System.getenv("OSS_ACCESS_KEY_ID");
+        String accessKeySecret = System.getenv("OSS_ACCESS_KEY_SECRET");
+        System.out.println(accessKeyId);
+        System.out.println(accessKeySecret);
+    }
+
 
     @Test
     public void test_redisKey() {

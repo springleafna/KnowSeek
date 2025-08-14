@@ -3,6 +3,9 @@ package com.springleaf.knowseek.model.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+/**
+ * 分片上传初始化DTO
+ */
 @Data
 public class FileUploadChunkInitDTO {
 

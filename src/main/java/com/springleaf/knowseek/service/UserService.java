@@ -9,6 +9,9 @@ public interface UserService {
 
     /**
      * 用户登录
+     *
+     * @param loginDTO 登录信息
+     * @return 登录结果，包含token和用户信息
      */
     UserLoginVO login(UserLoginDTO loginDTO);
 

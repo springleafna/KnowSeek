@@ -58,8 +58,8 @@
 
     <!-- 插入用户 -->
     <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO tb_user (username, password, role, org_tags, primary_org)
-        VALUES (#{username}, #{password}, #{role}, #{orgTags}, #{primaryOrg})
+        INSERT INTO tb_user (username, password)
+        VALUES (#{username}, #{password})
     </insert>
 
     <!-- 更新用户 -->
