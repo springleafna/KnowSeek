@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springleaf.knowseek.mapper.OrganizationMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.Organization">
+        <id column="id" property="id" />
+        <result column="tag" property="tag" />
+        <result column="name" property="name" />
+        <result column="description" property="description" />
+        <result column="parent_id" property="parentId" />
+        <result column="created_by" property="createdBy" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, tag, name, description, parent_id, created_by, created_at, updated_at, deleted
+    </sql>
+
+    <!-- 根据ID查询组织 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_organization
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 根据标签名查询组织 -->
+    <select id="selectByTag" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_organization
+        WHERE tag = #{tag} AND deleted = 0
+    </select>
+
+    <!-- 查询所有组织 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_organization
+        WHERE deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 根据父组织ID查询子组织 -->
+    <select id="selectByParentId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_organization
+        WHERE parent_id = #{parentId} AND deleted = 0
+        ORDER BY created_at
+    </select>
+
+    <!-- 查询组织总数 -->
+    <select id="count" parameterType="java.util.Map" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM tb_organization
+        <where>
+            <if test="tag != null and tag != ''">
+                AND tag LIKE CONCAT('%', #{tag}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="parentId != null">
+                AND parent_id = #{parentId}
+            </if>
+            <if test="createdBy != null">
+                AND created_by = #{createdBy}
+            </if>
+            AND deleted = 0
+        </where>
+    </select>
+
+    <!-- 插入组织 -->
+    <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.Organization" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_organization (tag, name, description, parent_id, created_by)
+        VALUES (#{tag}, #{name}, #{description}, #{parentId}, #{createdBy})
+    </insert>
+
+    <!-- 更新组织 -->
+    <update id="updateById" parameterType="com.springleaf.knowseek.model.entity.Organization">
+        UPDATE tb_organization
+        <set>
+            <if test="tag != null">tag = #{tag},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 删除组织（逻辑删除） -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE tb_organization
+        SET deleted = 1
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -8,35 +8,36 @@
         <result column="username" property="username" />
         <result column="password" property="password" />
         <result column="role" property="role" />
-        <result column="org_tags" property="orgTags" />
-        <result column="primary_org" property="primaryOrg" />
+        <result column="primary_org_id" property="primaryOrgId" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
+        <result column="deleted" property="deleted" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, username, password, role, org_tags, primary_org, created_at, updated_at
+        id, username, password, role, primary_org_id, created_at, updated_at, deleted
     </sql>
 
     <!-- 根据ID查询用户 -->
     <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
         FROM tb_user
-        WHERE id = #{id}
+        WHERE id = #{id} AND deleted  = 0
     </select>
 
     <!-- 根据用户名查询用户 -->
     <select id="selectByUsername" parameterType="java.lang.String" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
         FROM tb_user
-        WHERE username = #{username}
+        WHERE username = #{username} AND deleted  = 0
     </select>
 
     <!-- 查询所有用户 -->
     <select id="selectAll" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
         FROM tb_user
+        WHERE deleted = 0
     </select>
 
     <!-- 查询用户总数 -->
@@ -58,8 +59,8 @@
 
     <!-- 插入用户 -->
     <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO tb_user (username, password)
-        VALUES (#{username}, #{password})
+        INSERT INTO tb_user (username, password, role)
+        VALUES (#{username}, #{password}, #{role})
     </insert>
 
     <!-- 更新用户 -->
@@ -78,7 +79,8 @@
 
     <!-- 删除用户 -->
     <delete id="deleteById" parameterType="java.lang.Long">
-        DELETE FROM tb_user
+        UPDATE tb_user
+        SET deleted = 1
         WHERE id = #{id}
     </delete>
 

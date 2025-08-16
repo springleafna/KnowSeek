@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springleaf.knowseek.mapper.UserOrganizationMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.UserOrganization">
+        <result column="user_id" property="userId" />
+        <result column="organization_id" property="organizationId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        user_id, organization_id
+    </sql>
+
+    <!-- 插入用户组织关联 -->
+    <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.UserOrganization">
+        INSERT INTO tb_user_organization (user_id, organization_id)
+        VALUES (#{userId}, #{organizationId})
+    </insert>
+
+    <!-- 根据用户ID和组织ID删除关联 -->
+    <delete id="deleteByUserIdAndOrgId">
+        DELETE FROM tb_user_organization
+        WHERE user_id = #{userId} AND organization_id = #{organizationId}
+    </delete>
+
+    <!-- 根据用户ID删除该用户的所有组织关联 -->
+    <delete id="deleteByUserId" parameterType="java.lang.Long">
+        DELETE FROM tb_user_organization
+        WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 根据组织ID删除该组织的所有用户关联 -->
+    <delete id="deleteByOrganizationId" parameterType="java.lang.Long">
+        DELETE FROM tb_user_organization
+        WHERE organization_id = #{organizationId}
+    </delete>
+
+    <!-- 根据用户ID查询该用户所属的所有组织 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_user_organization
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 根据组织ID查询该组织下的所有用户 -->
+    <select id="selectByOrganizationId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_user_organization
+        WHERE organization_id = #{organizationId}
+    </select>
+
+    <!-- 查询用户组织关联总数 -->
+    <select id="count" parameterType="java.util.Map" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM tb_user_organization
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="organizationId != null">
+                AND organization_id = #{organizationId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 检查用户是否属于某个组织 -->
+    <select id="exists" resultType="java.lang.Boolean">
+        SELECT COUNT(*) > 0
+        FROM tb_user_organization
+        WHERE user_id = #{userId} AND organization_id = #{organizationId}
+    </select>
+
+</mapper>
