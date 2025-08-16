@@ -32,9 +32,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserLoginVO login(UserLoginDTO loginDTO) {
-        User user = userMapper.selectByUsername(loginDTO.getUsername());
+        String username = loginDTO.getUsername();
+        User user = userMapper.selectByUsername(username);
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException("用户名或密码错误");
         }
         if (!PasswordUtil.verifyPassword(loginDTO.getPassword(), user.getPassword())) {
             throw new BusinessException("用户名或密码错误");
@@ -44,6 +45,8 @@ public class UserServiceImpl implements UserService {
         String token = StpUtil.getTokenValue();
 
         // TODO：需要判断当前登录用户是管理员还是普通用户，两种角色有不同权限
+        String role = user.getRole();
+        log.info("{} 用户登录, 角色 {}", username, role);
 
         return new UserLoginVO(token);
     }
@@ -86,11 +89,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void logout() {
-
+        StpUtil.logout();
+        log.info("用户 {} 退出登录", StpUtil.getLoginIdAsLong());
     }
 
     @Override
     public UserInfoVO getUserInfo() {
-        return null;
+        long userId = StpUtil.getLoginIdAsLong();
+        User user = userMapper.selectById(userId);
+        UserInfoVO userInfoVO = new UserInfoVO();
+        userInfoVO.setRole(user.getRole());
+        userInfoVO.setUsername(user.getUsername());
+        Long primaryOrgId = user.getPrimaryOrgId();
+        if (primaryOrgId != null) {
+            userInfoVO.setPrimaryOrgName(organizationMapper.selectById(primaryOrgId).getName());
+        }else {
+            userInfoVO.setPrimaryOrgName(null);
+        }
+        log.info("获取用户信息 {}", userInfoVO);
+        return userInfoVO;
     }
 }

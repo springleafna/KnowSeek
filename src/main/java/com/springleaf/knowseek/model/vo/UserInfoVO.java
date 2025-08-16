@@ -7,4 +7,19 @@ import lombok.Data;
  */
 @Data
 public class UserInfoVO {
+
+    /**
+     * 用户名，唯一
+     */
+    private String username;
+
+    /**
+     * 用户角色：ADMIN/USER
+     */
+    private String role;
+
+    /**
+     * 用户主组织ID
+     */
+    private String primaryOrgName;
 }

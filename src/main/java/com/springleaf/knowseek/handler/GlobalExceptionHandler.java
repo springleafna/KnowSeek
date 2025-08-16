@@ -95,6 +95,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<?> handleException(Exception e) {
         log.error("未预期的异常", e);
-        return Result.error(500, "系统繁忙，请稍后再试！");
+        return Result.error(500, e.getMessage());
     }
 }
