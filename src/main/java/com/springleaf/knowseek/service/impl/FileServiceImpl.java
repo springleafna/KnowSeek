@@ -1,6 +1,7 @@
 package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.aliyun.oss.HttpMethod;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.*;
 import com.springleaf.knowseek.config.OssConfig;
@@ -24,7 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.net.URL;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -104,10 +107,15 @@ public class FileServiceImpl implements FileService {
     ));
 
     @Override
-    public UploadInitVO initFileUpload(FileUploadChunkInitDTO fileUploadChunkInitDTO) {
-        String fileName = fileUploadChunkInitDTO.getFileName();
-        String fileMd5 = fileUploadChunkInitDTO.getFileMd5();
+    public UploadInitVO initFileUpload(FileUploadChunkInitDTO dto) {
+        String fileName = dto.getFileName();
+        String fileMd5 = dto.getFileMd5();
+        Long fileSize = dto.getFileSize();
+        Integer chunkTotal = dto.getChunkTotal();
         Long userId = StpUtil.getLoginIdAsLong();
+        // URL 过期时间配置化
+        long expireSeconds = ossConfig.getPresignedUrlExpiration();
+        Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
         log.debug("开始初始化文件上传，用户ID: {}, 文件名: {}, 文件MD5: {}", userId, fileName, fileMd5);
 
         try {
@@ -115,8 +123,9 @@ public class FileServiceImpl implements FileService {
             FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId, UploadStatusEnum.COMPLETED.getStatus());
             if (fileUpload != null) {
                 log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
-                return new UploadInitVO(true, null);
+                return new UploadInitVO(true, null, fileUpload.getLocation(), null);
             }
+
             // 未秒传，进行文件上传OSS初始化
             InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(
                     ossConfig.getBucketName(), fileName);
@@ -124,12 +133,29 @@ public class FileServiceImpl implements FileService {
             String uploadId = result.getUploadId();
             log.debug("初始化OSS多部分上传成功，uploadId: {}", uploadId);
 
+            // 生成每个分片的直传 URL，返回预签名的 直传签名 URL，允许客户端在一段时间内直接向 OSS 上传分片
+            Map<Integer, String> uploadUrls = new HashMap<>();
+            for (int i = 1; i <= dto.getChunkTotal(); i++) {
+                GeneratePresignedUrlRequest urlRequest =
+                        new GeneratePresignedUrlRequest(ossConfig.getBucketName(), fileName, HttpMethod.PUT);
+                urlRequest.setExpiration(expiration);
+                // 把 uploadId 和 partNumber 作为 query 参数
+                Map<String, String> queryParams = new HashMap<>(2);
+                queryParams.put("uploadId", uploadId);
+                queryParams.put("partNumber", String.valueOf(i));
+                urlRequest.setQueryParameter(queryParams);
+
+                URL signedUrl = ossClient.generatePresignedUrl(urlRequest);
+                uploadUrls.put(i, signedUrl.toString());
+            }
+
             // 将文件上传信息保存到数据库，设置上传状态为上传中
             fileUpload = new FileUpload();
             fileUpload.setFileName(fileName);
             fileUpload.setFileMd5(fileMd5);
             fileUpload.setStatus(UploadStatusEnum.UPLOADING.getStatus());
             fileUpload.setUserId(userId);
+            fileUpload.setTotalSize(fileSize);
             int saveResult = fileUploadMapper.saveFileUpload(fileUpload);
             if (saveResult < 1) {
                 throw new BusinessException("保存文件上传信息失败");
@@ -143,11 +169,13 @@ public class FileServiceImpl implements FileService {
             redisValue.put("fileName", fileName);
             redisValue.put("fileMd5", fileMd5);
             redisValue.put("userId", String.valueOf(userId));
+            redisValue.put("chunkTotal", String.valueOf(chunkTotal));
 
             stringRedisTemplate.opsForHash().putAll(fileUploadInfoKey, redisValue);
+            stringRedisTemplate.expire(fileUploadInfoKey, expireSeconds, TimeUnit.SECONDS);
             log.debug("文件上传信息已存入Redis，key: {}", fileUploadInfoKey);
 
-            return new UploadInitVO(false, uploadId);
+            return new UploadInitVO(false, uploadId, null, uploadUrls);
         } catch (Exception e) {
             log.error("初始化文件上传失败，文件名: {}, 文件MD5: {}, 错误信息: {}", fileName, fileMd5, e.getMessage());
             throw new BusinessException("初始化文件上传失败，请重试");

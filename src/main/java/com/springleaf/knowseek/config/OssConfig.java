@@ -3,7 +3,6 @@ package com.springleaf.knowseek.config;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +14,10 @@ public class OssConfig {
 
     private String endpoint;
     private String bucketName;
+    /**
+     * 预签名URL过期时间：15分钟
+     */
+    private Long presignedUrlExpiration;
 
     @Bean
     public OSS ossClient() {
