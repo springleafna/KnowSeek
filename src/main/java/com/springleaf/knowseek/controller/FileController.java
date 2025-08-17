@@ -16,7 +16,6 @@ import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/file")
-@CrossOrigin
 @RequiredArgsConstructor
 public class FileController {
 

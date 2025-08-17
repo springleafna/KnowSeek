@@ -18,24 +18,36 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * 用户名 密码 登录
+     */
     @PostMapping("/login")
     public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO loginDTO) {
         UserLoginVO userLoginVO = userService.login(loginDTO);
         return Result.success(userLoginVO);
     }
 
+    /**
+     * 用户名 密码 注册
+     */
     @PostMapping("/register")
     public Result<Void> register(@Valid @RequestBody UserRegisterDTO registerDTO) {
         userService.register(registerDTO);
         return Result.success();
     }
 
+    /**
+     * 退出登录
+     */
     @PostMapping("/logout")
     public Result<Void> logout() {
         userService.logout();
         return Result.success();
     }
 
+    /**
+     * 获取用户信息
+     */
     @GetMapping("/info")
     public Result<UserInfoVO> getUserInfo() {
         UserInfoVO userInfoVO = userService.getUserInfo();

@@ -2,6 +2,7 @@ package com.springleaf.knowseek.mapper;
 
 import com.springleaf.knowseek.model.entity.User;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -54,4 +55,9 @@ public interface UserMapper {
      * @return 用户总数
      */
     int count();
+
+    /**
+     * 设置主组织ID
+     */
+    void setPrimaryOrgId(@Param("orgId") Long orgId, @Param("userId") Long userId);
 }

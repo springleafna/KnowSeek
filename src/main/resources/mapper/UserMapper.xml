@@ -77,6 +77,12 @@
         WHERE id = #{id}
     </update>
 
+    <update id="setPrimaryOrgId">
+        UPDATE tb_user
+        SET primary_org_id = #{orgId}
+        WHERE id = #{userId}
+    </update>
+
     <!-- 删除用户 -->
     <delete id="deleteById" parameterType="java.lang.Long">
         UPDATE tb_user
