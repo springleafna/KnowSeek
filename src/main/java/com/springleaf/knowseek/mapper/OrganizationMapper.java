@@ -63,4 +63,11 @@ public interface OrganizationMapper {
      * @return 组织总数
      */
     int count(Map<String, Object> params);
+
+    /**
+     * 根据组织标签列表获取组织ID列表
+     * @param orgTagList 组织标签列表
+     * @return 组织ID列表
+     */
+    List<Long> selectOrgIdtByTags(List<String> orgTagList);
 }

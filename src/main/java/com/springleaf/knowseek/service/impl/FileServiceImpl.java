@@ -131,7 +131,7 @@ public class FileServiceImpl implements FileService {
                     ossConfig.getBucketName(), fileName);
             InitiateMultipartUploadResult result = ossClient.initiateMultipartUpload(request);
             String uploadId = result.getUploadId();
-            log.debug("初始化OSS多部分上传成功，uploadId: {}", uploadId);
+            log.debug("OSS分片上传初始化成功，uploadId: {}", uploadId);
 
             // 生成每个分片的直传 URL，返回预签名的 直传签名 URL，允许客户端在一段时间内直接向 OSS 上传分片
             Map<Integer, String> uploadUrls = new HashMap<>();

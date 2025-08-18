@@ -84,6 +84,9 @@ public class UserServiceImpl implements UserService {
         userOrganization.setUserId(newUserId);
         userOrganization.setOrganizationId(newOrganizationId);
         userOrganizationMapper.insert(userOrganization);
+
+        // 将创建的默认组织设置为用户的主组织
+        userMapper.setPrimaryOrgId(newOrganizationId, newUserId);
         log.info("新用户注册成功");
     }
 

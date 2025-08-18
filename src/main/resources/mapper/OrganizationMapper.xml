@@ -97,4 +97,14 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 根据标签列表查询组织ID -->
+    <select id="selectOrgIdtByTags" parameterType="java.util.List" resultType="java.lang.Long">
+        SELECT id
+        FROM tb_organization
+        WHERE tag IN
+        <foreach collection="orgTagList" item="tag" open="(" separator="," close=")">
+            #{tag}
+        </foreach>
+        AND deleted = 0
+    </select>
 </mapper>

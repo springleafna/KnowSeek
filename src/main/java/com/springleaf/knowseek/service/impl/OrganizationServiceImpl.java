@@ -5,6 +5,8 @@ import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.OrganizationMapper;
 import com.springleaf.knowseek.mapper.UserMapper;
 import com.springleaf.knowseek.mapper.UserOrganizationMapper;
+import com.springleaf.knowseek.model.dto.OrganizationAddDTO;
+import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
 import com.springleaf.knowseek.model.entity.Organization;
 import com.springleaf.knowseek.model.entity.UserOrganization;
 import com.springleaf.knowseek.model.vo.OrganizationVO;
@@ -17,7 +19,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,5 +65,44 @@ public class OrganizationServiceImpl implements OrganizationService {
             organizationVOList.add(organizationVO);
         }
         return organizationVOList;
+    }
+
+    @Override
+    public void createOrg(OrganizationAddDTO organizationAddDTO) {
+        long userId = StpUtil.getLoginIdAsLong();
+        String orgTag = organizationAddDTO.getOrgTag();
+        String orgName = organizationAddDTO.getOrgName();
+        String parentOrgTag = organizationAddDTO.getParentOrgTag();
+        String description = organizationAddDTO.getDescription();
+
+        Long parentOrgId = null;
+        if (parentOrgTag != null) {
+            parentOrgId = organizationMapper.selectByTag(parentOrgTag).getId();
+        }
+
+        log.info("用户 {} 创建组织，组织标签 {}， 组织名 {}， 组织上级 {}", userId, orgTag, orgName, parentOrgTag != null ? parentOrgTag : "无");
+
+        if (organizationMapper.selectByTag(orgTag) != null) {
+            throw new BusinessException("组织标签已存在");
+        }
+        Organization organization = new Organization();
+        organization.setTag(orgTag);
+        organization.setName(orgName);
+        organization.setParentId(parentOrgId);
+        organization.setDescription(description);
+        organization.setCreatedBy(userId);
+
+        organizationMapper.insert(organization);
+    }
+
+    @Override
+    public void assignOrgToUser(OrganizationAssignDTO organizationAssignDTO) {
+        Long userId = organizationAssignDTO.getUserId();
+        List<String> orgTagList = organizationAssignDTO.getOrgTagList();
+        log.info("为用户 {} 分配组织 {}", userId, orgTagList.toArray());
+        List<Long> orgIdList = organizationMapper.selectOrgIdtByTags(orgTagList);
+        for (Long orgId : orgIdList) {
+            userOrganizationMapper.insert(new UserOrganization(userId, orgId));
+        }
     }
 }
