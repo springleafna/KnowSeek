@@ -1,7 +1,9 @@
 package com.springleaf.knowseek.mapper;
 
 import com.springleaf.knowseek.model.entity.Organization;
+import com.springleaf.knowseek.model.vo.OrganizationListVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
@@ -70,4 +72,10 @@ public interface OrganizationMapper {
      * @return 组织ID列表
      */
     List<Long> selectOrgIdtByTags(List<String> orgTagList);
+    
+    /**
+     * 查询所有未删除的组织列表
+     * @return 组织列表
+     */
+    List<Organization> selectAllNotDeleted();
 }

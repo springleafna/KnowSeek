@@ -107,4 +107,12 @@
         </foreach>
         AND deleted = 0
     </select>
+    
+    <!-- 查询所有未删除的组织列表 -->
+    <select id="selectAllNotDeleted" resultMap="BaseResultMap">
+        SELECT o.id, o.tag, o.name, o.description, o.parent_id, o.created_by, o.created_at, o.updated_at, o.deleted
+        FROM tb_organization o
+        WHERE o.deleted = 0
+        ORDER BY o.created_at DESC
+    </select>
 </mapper>

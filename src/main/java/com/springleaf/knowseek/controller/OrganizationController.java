@@ -1,8 +1,13 @@
 package com.springleaf.knowseek.controller;
 
+import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.OrganizationAddDTO;
+import com.springleaf.knowseek.model.dto.OrganizationAddDescDTO;
 import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
+import com.springleaf.knowseek.model.dto.OrganizationPageDTO;
+import com.springleaf.knowseek.model.dto.OrganizationUpdateDTO;
+import com.springleaf.knowseek.model.vo.OrganizationListVO;
 import com.springleaf.knowseek.model.vo.OrganizationVO;
 import com.springleaf.knowseek.service.OrganizationService;
 import jakarta.validation.Valid;
@@ -55,5 +60,32 @@ public class OrganizationController {
     public Result<Void> assignOrgToUser(@RequestBody @Valid OrganizationAssignDTO organizationAssignDTO) {
         organizationService.assignOrgToUser(organizationAssignDTO);
         return Result.success();
+    }
+
+    /**
+     * Admin：添加组织下级
+     */
+    @PostMapping("/addSub")
+    public Result<Void> addSubOrg(@RequestBody @Valid OrganizationAddDescDTO organizationAddDescDTO) {
+        organizationService.addSubOrg(organizationAddDescDTO);
+        return Result.success();
+    }
+
+    /**
+     * Admin：编辑组织
+     */
+    @PutMapping("/update")
+    public Result<Void> updateOrg(@RequestBody @Valid OrganizationUpdateDTO organizationUpdateDTO) {
+        organizationService.updateOrg(organizationUpdateDTO);
+        return Result.success();
+    }
+    
+    /**
+     * Admin：查询所有未删除的组织列表（分页）
+     */
+    @GetMapping("/list")
+    public Result<PageInfo<OrganizationListVO>> listAllOrganizations(@Valid OrganizationPageDTO pageDTO) {
+        PageInfo<OrganizationListVO> pageInfo = organizationService.listAllOrganizations(pageDTO);
+        return Result.success(pageInfo);
     }
 }
