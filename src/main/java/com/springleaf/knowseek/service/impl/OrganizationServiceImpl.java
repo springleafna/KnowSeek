@@ -8,7 +8,7 @@ import com.springleaf.knowseek.mapper.OrganizationMapper;
 import com.springleaf.knowseek.mapper.UserMapper;
 import com.springleaf.knowseek.mapper.UserOrganizationMapper;
 import com.springleaf.knowseek.model.dto.OrganizationAddDTO;
-import com.springleaf.knowseek.model.dto.OrganizationAddDescDTO;
+import com.springleaf.knowseek.model.dto.OrganizationAddSubDTO;
 import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
 import com.springleaf.knowseek.model.dto.OrganizationPageDTO;
 import com.springleaf.knowseek.model.dto.OrganizationUpdateDTO;
@@ -114,10 +114,10 @@ public class OrganizationServiceImpl implements OrganizationService {
     }
     
     @Override
-    public void addSubOrg(OrganizationAddDescDTO organizationAddDescDTO) {
+    public void addSubOrg(OrganizationAddSubDTO organizationAddSubDTO) {
         long userId = StpUtil.getLoginIdAsLong();
-        String orgTag = organizationAddDescDTO.getOrgTag();
-        String subOrgTag = organizationAddDescDTO.getSubOrgTag();
+        String orgTag = organizationAddSubDTO.getOrgTag();
+        String subOrgTag = organizationAddSubDTO.getSubOrgTag();
         
         // 检查当前组织是否存在
         Organization parentOrg = organizationMapper.selectByTag(orgTag);

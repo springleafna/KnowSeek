@@ -7,7 +7,7 @@ import lombok.Data;
  * Admin：添加组织下级DTO
  */
 @Data
-public class OrganizationAddDescDTO {
+public class OrganizationAddSubDTO {
 
     /**
      * 当前组织标签

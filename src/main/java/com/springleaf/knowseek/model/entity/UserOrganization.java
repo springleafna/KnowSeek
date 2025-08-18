@@ -2,12 +2,14 @@ package com.springleaf.knowseek.model.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 用户组织关联实体类
  */
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class UserOrganization {
 
     /**

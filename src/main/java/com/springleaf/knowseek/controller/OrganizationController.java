@@ -1,9 +1,10 @@
 package com.springleaf.knowseek.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.OrganizationAddDTO;
-import com.springleaf.knowseek.model.dto.OrganizationAddDescDTO;
+import com.springleaf.knowseek.model.dto.OrganizationAddSubDTO;
 import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
 import com.springleaf.knowseek.model.dto.OrganizationPageDTO;
 import com.springleaf.knowseek.model.dto.OrganizationUpdateDTO;
@@ -47,6 +48,7 @@ public class OrganizationController {
     /**
      * Admin：创建组织（可选择上级）
      */
+    @SaCheckRole("admin")
     @PostMapping("/create")
     public Result<Void> createOrg(@RequestBody @Valid OrganizationAddDTO organizationAddDTO) {
         organizationService.createOrg(organizationAddDTO);
@@ -56,6 +58,7 @@ public class OrganizationController {
     /**
      * Admin：为用户分配组织
      */
+    @SaCheckRole("admin")
     @PostMapping("/assign")
     public Result<Void> assignOrgToUser(@RequestBody @Valid OrganizationAssignDTO organizationAssignDTO) {
         organizationService.assignOrgToUser(organizationAssignDTO);
@@ -65,15 +68,17 @@ public class OrganizationController {
     /**
      * Admin：添加组织下级
      */
+    @SaCheckRole("admin")
     @PostMapping("/addSub")
-    public Result<Void> addSubOrg(@RequestBody @Valid OrganizationAddDescDTO organizationAddDescDTO) {
-        organizationService.addSubOrg(organizationAddDescDTO);
+    public Result<Void> addSubOrg(@RequestBody @Valid OrganizationAddSubDTO organizationAddSubDTO) {
+        organizationService.addSubOrg(organizationAddSubDTO);
         return Result.success();
     }
 
     /**
      * Admin：编辑组织
      */
+    @SaCheckRole("admin")
     @PutMapping("/update")
     public Result<Void> updateOrg(@RequestBody @Valid OrganizationUpdateDTO organizationUpdateDTO) {
         organizationService.updateOrg(organizationUpdateDTO);
@@ -83,6 +88,7 @@ public class OrganizationController {
     /**
      * Admin：查询所有未删除的组织列表（分页）
      */
+    @SaCheckRole("admin")
     @GetMapping("/list")
     public Result<PageInfo<OrganizationListVO>> listAllOrganizations(@Valid OrganizationPageDTO pageDTO) {
         PageInfo<OrganizationListVO> pageInfo = organizationService.listAllOrganizations(pageDTO);

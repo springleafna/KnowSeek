@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -41,12 +43,17 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("用户名或密码错误");
         }
 
+        // 登录
         StpUtil.login(user.getId());
         String token = StpUtil.getTokenValue();
-
-        // TODO：需要判断当前登录用户是管理员还是普通用户，两种角色有不同权限
+        
+        // 记录登录日志
         String role = user.getRole();
-        log.info("{} 用户登录, 角色 {}", username, role);
+        if (UserRoleEnum.ADMIN.getValue().equals(role)) {
+            log.info("{} 管理员登录成功", username);
+        } else {
+            log.info("{} 普通用户登录成功", username);
+        }
 
         return new UserLoginVO(token);
     }
@@ -66,9 +73,10 @@ public class UserServiceImpl implements UserService {
         user.setPassword(PasswordUtil.encryptPassword(registerDTO.getPassword()));
         user.setRole(UserRoleEnum.USER.getValue());
         // 执行新增用户返回用户ID
-        Long newUserId = (long) userMapper.insert(user);
+        userMapper.insert(user);
+        Long newUserId = user.getId();
 
-        // 用户注册成功后会自动获得一个该用户的默认组织 DEFAULT_ORG_%USERNAME
+                // 用户注册成功后会自动获得一个该用户的默认组织 DEFAULT_ORG_%USERNAME
         String defaultOrgTag = String.format(DefaultOrgConstant.DEFAULT_ORG_TAG, username);
         Organization organization = new Organization();
         organization.setTag(defaultOrgTag);
@@ -77,9 +85,10 @@ public class UserServiceImpl implements UserService {
         organization.setParentId(null);
         organization.setCreatedBy(DefaultOrgConstant.DEFAULT_ORG_CREATE);
         // 执行新增组织，返回组织ID
-        Long newOrganizationId = (long) organizationMapper.insert(organization);
+        organizationMapper.insert(organization);
+        Long newOrganizationId = organization.getId();
 
-        // 添加到用户组织关联表中
+                // 添加到用户组织关联表中
         UserOrganization userOrganization = new UserOrganization();
         userOrganization.setUserId(newUserId);
         userOrganization.setOrganizationId(newOrganizationId);

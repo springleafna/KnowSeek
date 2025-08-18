@@ -2,7 +2,7 @@ package com.springleaf.knowseek.service;
 
 import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.model.dto.OrganizationAddDTO;
-import com.springleaf.knowseek.model.dto.OrganizationAddDescDTO;
+import com.springleaf.knowseek.model.dto.OrganizationAddSubDTO;
 import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
 import com.springleaf.knowseek.model.dto.OrganizationPageDTO;
 import com.springleaf.knowseek.model.dto.OrganizationUpdateDTO;
@@ -36,7 +36,7 @@ public interface OrganizationService {
     /**
      * Admin：添加组织下级
      */
-    void addSubOrg(OrganizationAddDescDTO organizationAddDescDTO);
+    void addSubOrg(OrganizationAddSubDTO organizationAddSubDTO);
     
     /**
      * Admin：编辑组织

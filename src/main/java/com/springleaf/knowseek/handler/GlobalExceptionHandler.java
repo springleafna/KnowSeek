@@ -1,6 +1,10 @@
 package com.springleaf.knowseek.handler;
 
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
 import com.springleaf.knowseek.common.Result;
+import com.springleaf.knowseek.enums.ResultCodeEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -86,6 +90,36 @@ public class GlobalExceptionHandler {
     public Result<?> handleIndexOutOfBoundsException(IndexOutOfBoundsException e) {
         log.error("数组越界异常", e);
         return Result.error(500, "系统内部错误：越界访问");
+    }
+
+    /**
+     * 处理 Sa-Token 未登录异常
+     */
+    @ExceptionHandler(NotLoginException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public Result<?> handleNotLoginException(NotLoginException e) {
+        log.warn("未登录异常: {}", e.getMessage());
+        return Result.error(ResultCodeEnum.UNAUTHORIZED.getCode(), "请先登录");
+    }
+
+    /**
+     * 处理 Sa-Token 角色异常
+     */
+    @ExceptionHandler(NotRoleException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Result<?> handleNotRoleException(NotRoleException e) {
+        log.warn("角色权限不足: {}", e.getMessage());
+        return Result.error(ResultCodeEnum.FORBIDDEN.getCode(), "您没有 " + e.getRole() + " 角色权限");
+    }
+
+    /**
+     * 处理 Sa-Token 权限异常
+     */
+    @ExceptionHandler(NotPermissionException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Result<?> handleNotPermissionException(NotPermissionException e) {
+        log.warn("操作权限不足: {}", e.getMessage());
+        return Result.error(ResultCodeEnum.FORBIDDEN.getCode(), "您没有 " + e.getPermission() + " 操作权限");
     }
 
     /**
