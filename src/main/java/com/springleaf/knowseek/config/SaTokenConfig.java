@@ -14,14 +14,8 @@ public class SaTokenConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册Sa-Token的注解拦截器，拦截所有路径，但放行登录注册请求
         registry.addInterceptor(new SaInterceptor(handle -> {
-            // 登录校验 -- 拦截所有路径，并排除登录注册接口
-            SaRouter.match("/**")
-                    .notMatch("/user/login", "/user/register", "/error")
-                    .check(r -> StpUtil.checkLogin());
-            
-            // 角色校验 -- 管理员接口
-            SaRouter.match("/org/create", "/org/assign", "/org/addSub", "/org/update", "/org/list")
-                    .check(r -> StpUtil.checkRole("admin"));
+            // 登录校验 -- 拦截所有路径 (登录注册接口已通过excludePathPatterns排除)
+            SaRouter.match("/**").check(r -> StpUtil.checkLogin());
         }))
         .addPathPatterns("/**")
         .excludePathPatterns(

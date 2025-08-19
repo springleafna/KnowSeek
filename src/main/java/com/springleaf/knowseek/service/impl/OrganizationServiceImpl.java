@@ -63,17 +63,24 @@ public class OrganizationServiceImpl implements OrganizationService {
             return Collections.emptyList();
         }
 
-        // TODO:待优化成多表联查
+        // 优化为多表联查
         List<Long> orgIdList = userOrganizations.stream()
                 .map(UserOrganization::getOrganizationId)
                 .toList();
 
+        List<Organization> organizations = organizationMapper.selectBatchIds(orgIdList);
+        Map<Long, Organization> organizationMap = organizations.stream()
+                .collect(Collectors.toMap(Organization::getId, org -> org));
+
         List<OrganizationVO> organizationVOList = new ArrayList<>();
-        for (Long orgId : orgIdList) {
-            Organization organization = organizationMapper.selectById(orgId);
-            OrganizationVO organizationVO = new OrganizationVO();
-            BeanUtils.copyProperties(organization, organizationVO);
-            organizationVOList.add(organizationVO);
+        for (UserOrganization userOrg : userOrganizations) {
+            Organization organization = organizationMap.get(userOrg.getOrganizationId());
+            if (organization != null) {
+                OrganizationVO organizationVO = new OrganizationVO();
+                BeanUtils.copyProperties(organization, organizationVO);
+                organizationVO.setName(organization.getName());
+                organizationVOList.add(organizationVO);
+            }
         }
         return organizationVOList;
     }

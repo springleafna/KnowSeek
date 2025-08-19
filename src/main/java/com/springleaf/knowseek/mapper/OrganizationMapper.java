@@ -74,11 +74,18 @@ public interface OrganizationMapper {
     List<Long> selectOrgIdtByTags(List<String> orgTagList);
     
     /**
+     * 根据ID列表查询组织
+     * @param ids 组织ID列表
+     * @return 组织实体列表
+     */
+    List<Organization> selectBatchIds(@Param("list") List<Long> ids);
+
+    /**
      * 查询所有未删除的组织列表
      * @return 组织列表
      */
     List<Organization> selectAllNotDeleted();
-    
+
     /**
      * 根据条件查询未删除的组织列表
      * @param tag 组织标签（模糊搜索）
