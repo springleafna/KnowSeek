@@ -78,4 +78,12 @@ public interface OrganizationMapper {
      * @return 组织列表
      */
     List<Organization> selectAllNotDeleted();
+    
+    /**
+     * 根据条件查询未删除的组织列表
+     * @param tag 组织标签（模糊搜索）
+     * @param name 组织名称（模糊搜索）
+     * @return 组织列表
+     */
+    List<Organization> selectByCondition(@Param("tag") String tag, @Param("name") String name);
 }

@@ -3,10 +3,10 @@ package com.springleaf.knowseek.model.dto;
 import lombok.Data;
 
 /**
- * 组织分页查询DTO
+ * 用户分页查询DTO
  */
 @Data
-public class OrganizationPageDTO {
+public class UserPageDTO {
 
     /**
      * 当前页码
@@ -19,12 +19,7 @@ public class OrganizationPageDTO {
     private Integer pageSize = 10;
     
     /**
-     * 组织标签（模糊搜索）
+     * 用户名（模糊搜索）
      */
-    private String tag;
-    
-    /**
-     * 组织名称（模糊搜索）
-     */
-    private String name;
+    private String username;
 }

@@ -7,6 +7,7 @@ import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
 import com.springleaf.knowseek.model.dto.OrganizationPageDTO;
 import com.springleaf.knowseek.model.dto.OrganizationUpdateDTO;
 import com.springleaf.knowseek.model.vo.OrganizationListVO;
+import com.springleaf.knowseek.model.vo.OrganizationTreeVO;
 import com.springleaf.knowseek.model.vo.OrganizationVO;
 
 import java.util.List;
@@ -49,4 +50,10 @@ public interface OrganizationService {
      * @return 分页组织列表
      */
     PageInfo<OrganizationListVO> listAllOrganizations(OrganizationPageDTO pageDTO);
+    
+    /**
+     * Admin：获取组织树形结构
+     * @return 组织树形结构列表
+     */
+    List<OrganizationTreeVO> getOrganizationTree();
 }

@@ -16,6 +16,7 @@ import com.springleaf.knowseek.model.entity.Organization;
 import com.springleaf.knowseek.model.entity.User;
 import com.springleaf.knowseek.model.entity.UserOrganization;
 import com.springleaf.knowseek.model.vo.OrganizationListVO;
+import com.springleaf.knowseek.model.vo.OrganizationTreeVO;
 import com.springleaf.knowseek.model.vo.OrganizationVO;
 import com.springleaf.knowseek.service.OrganizationService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -189,11 +193,22 @@ public class OrganizationServiceImpl implements OrganizationService {
     
     @Override
     public PageInfo<OrganizationListVO> listAllOrganizations(OrganizationPageDTO pageDTO) {
-        log.info("查询所有未删除的组织列表，页码：{}，每页数量：{}", pageDTO.getPageNum(), pageDTO.getPageSize());
+        log.info("查询组织列表，页码：{}，每页数量：{}，标签：{}，名称：{}", 
+                pageDTO.getPageNum(), pageDTO.getPageSize(), pageDTO.getTag(), pageDTO.getName());
         
         // 使用PageHelper进行分页查询
         PageHelper.startPage(pageDTO.getPageNum(), pageDTO.getPageSize());
-        List<Organization> organizationList = organizationMapper.selectAllNotDeleted();
+        
+        // 根据条件查询组织列表
+        List<Organization> organizationList;
+        if ((pageDTO.getTag() != null && !pageDTO.getTag().isEmpty()) || 
+            (pageDTO.getName() != null && !pageDTO.getName().isEmpty())) {
+            // 如果有搜索条件，使用条件查询
+            organizationList = organizationMapper.selectByCondition(pageDTO.getTag(), pageDTO.getName());
+        } else {
+            // 如果没有搜索条件，查询所有
+            organizationList = organizationMapper.selectAllNotDeleted();
+        }
         
         // 将Organization对象转换为OrganizationListVO对象
         List<OrganizationListVO> voList = new ArrayList<>();
@@ -228,5 +243,55 @@ public class OrganizationServiceImpl implements OrganizationService {
         pageInfo.setTotal(new PageInfo<>(organizationList).getTotal());
         
         return pageInfo;
+    }
+    
+    @Override
+    public List<OrganizationTreeVO> getOrganizationTree() {
+        log.info("获取组织树形结构");
+        
+        // 获取所有未删除的组织
+        List<Organization> allOrganizations = organizationMapper.selectAllNotDeleted();
+        
+        // 将组织列表转换为树形结构
+        return buildOrganizationTree(allOrganizations);
+    }
+    
+    /**
+     * 构建组织树形结构
+     * @param organizations 组织列表
+     * @return 组织树形结构列表
+     */
+    private List<OrganizationTreeVO> buildOrganizationTree(List<Organization> organizations) {
+        // 创建一个Map，用于存储组织ID和对应的树形结构VO对象
+        Map<Long, OrganizationTreeVO> orgMap = new HashMap<>();
+        
+        // 将所有组织转换为树形结构VO对象，并存入Map中
+        for (Organization org : organizations) {
+            OrganizationTreeVO treeVO = new OrganizationTreeVO();
+            treeVO.setId(org.getId());
+            treeVO.setTag(org.getTag());
+            treeVO.setName(org.getName());
+            treeVO.setParentId(org.getParentId());
+            treeVO.setChildren(new ArrayList<>());
+            
+            orgMap.put(org.getId(), treeVO);
+        }
+        
+        // 构建树形结构
+        List<OrganizationTreeVO> rootOrgs = new ArrayList<>();
+        for (Organization org : organizations) {
+            if (org.getParentId() == null) {
+                // 如果没有父组织，则为根组织
+                rootOrgs.add(orgMap.get(org.getId()));
+            } else {
+                // 如果有父组织，则将当前组织添加到父组织的子组织列表中
+                OrganizationTreeVO parentVO = orgMap.get(org.getParentId());
+                if (parentVO != null) {
+                    parentVO.getChildren().add(orgMap.get(org.getId()));
+                }
+            }
+        }
+        
+        return rootOrgs;
     }
 }

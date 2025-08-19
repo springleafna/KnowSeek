@@ -1,8 +1,11 @@
 package com.springleaf.knowseek.service;
 
+import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.model.dto.UserLoginDTO;
+import com.springleaf.knowseek.model.dto.UserPageDTO;
 import com.springleaf.knowseek.model.dto.UserRegisterDTO;
 import com.springleaf.knowseek.model.vo.UserInfoVO;
+import com.springleaf.knowseek.model.vo.UserListVO;
 import com.springleaf.knowseek.model.vo.UserLoginVO;
 
 public interface UserService {
@@ -29,4 +32,11 @@ public interface UserService {
      * 获取用户信息
      */
     UserInfoVO getUserInfo();
+    
+    /**
+     * Admin：分页查询用户列表
+     * @param pageDTO 分页参数
+     * @return 分页用户列表
+     */
+    PageInfo<UserListVO> listUsers(UserPageDTO pageDTO);
 }

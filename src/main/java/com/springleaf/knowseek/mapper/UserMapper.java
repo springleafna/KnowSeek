@@ -49,6 +49,13 @@ public interface UserMapper {
      * @return 用户列表
      */
     List<User> selectAll();
+    
+    /**
+     * 根据用户名模糊查询用户
+     * @param username 用户名
+     * @return 用户列表
+     */
+    List<User> selectByUsernameContaining(String username);
 
     /**
      * 查询用户总数

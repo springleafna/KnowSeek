@@ -115,4 +115,18 @@
         WHERE o.deleted = 0
         ORDER BY o.created_at DESC
     </select>
+    
+    <!-- 根据条件查询未删除的组织列表 -->
+    <select id="selectByCondition" resultMap="BaseResultMap">
+        SELECT o.id, o.tag, o.name, o.description, o.parent_id, o.created_by, o.created_at, o.updated_at, o.deleted
+        FROM tb_organization o
+        WHERE o.deleted = 0
+        <if test="tag != null and tag != ''">
+            AND o.tag LIKE CONCAT('%', #{tag}, '%')
+        </if>
+        <if test="name != null and name != ''">
+            AND o.name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        ORDER BY o.created_at DESC
+    </select>
 </mapper>

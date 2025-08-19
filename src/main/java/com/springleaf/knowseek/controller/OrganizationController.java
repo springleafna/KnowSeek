@@ -9,6 +9,7 @@ import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
 import com.springleaf.knowseek.model.dto.OrganizationPageDTO;
 import com.springleaf.knowseek.model.dto.OrganizationUpdateDTO;
 import com.springleaf.knowseek.model.vo.OrganizationListVO;
+import com.springleaf.knowseek.model.vo.OrganizationTreeVO;
 import com.springleaf.knowseek.model.vo.OrganizationVO;
 import com.springleaf.knowseek.service.OrganizationService;
 import jakarta.validation.Valid;
@@ -93,5 +94,15 @@ public class OrganizationController {
     public Result<PageInfo<OrganizationListVO>> listAllOrganizations(@Valid OrganizationPageDTO pageDTO) {
         PageInfo<OrganizationListVO> pageInfo = organizationService.listAllOrganizations(pageDTO);
         return Result.success(pageInfo);
+    }
+    
+    /**
+     * Admin：获取组织树形结构
+     */
+    @SaCheckRole("admin")
+    @GetMapping("/tree")
+    public Result<List<OrganizationTreeVO>> getOrganizationTree() {
+        List<OrganizationTreeVO> treeList = organizationService.getOrganizationTree();
+        return Result.success(treeList);
     }
 }
