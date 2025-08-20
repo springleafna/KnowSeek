@@ -106,6 +106,9 @@ public class FileServiceImpl implements FileService {
     @Override
     public UploadInitVO initFileUpload(FileUploadChunkInitDTO dto) {
         String fileName = dto.getFileName();
+        // 验证文件类型是否支持
+        validateFileType(fileName);
+
         String fileMd5 = dto.getFileMd5();
         Long fileSize = dto.getFileSize();
         Integer chunkTotal = dto.getChunkTotal();
@@ -347,6 +350,7 @@ public class FileServiceImpl implements FileService {
             throw new BusinessException("文件必须有扩展名");
         }
 
+        // 获取文件类型
         String fileType = getFileTypeDescription(extension);
         log.debug("文件类型识别结果: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
 
