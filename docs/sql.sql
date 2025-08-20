@@ -1,3 +1,5 @@
+CREATE DATABASE know_seek if not exists;
+
 CREATE TABLE tb_user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户唯一标识',
     username VARCHAR(255) NOT NULL UNIQUE COMMENT '用户名，唯一',

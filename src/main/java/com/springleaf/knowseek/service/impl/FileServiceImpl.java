@@ -123,6 +123,10 @@ public class FileServiceImpl implements FileService {
                 return new UploadInitVO(true, null, fileUpload.getLocation(), null);
             }
 
+            // TODO：需要校验文件名是否合法
+            // TODO：最好先保存上传信息到数据库再调用OSS初始化，防止数据库插入失败，uploadId 已在 OSS 存在，但无记录 → 成为“孤儿上传任务”。
+            // TODO：启动定时任务扫描数据库和Redis并中止“超时未完成”的 uploadId
+            // TODO：未处理 OSS 异常重试机制，ossClient.initiateMultipartUpload() 可能因网络抖动失败。
             // 未秒传，进行文件上传OSS初始化
             InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(
                     ossConfig.getBucketName(), fileName);

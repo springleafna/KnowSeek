@@ -1,5 +1,7 @@
 package com.springleaf.knowseek.model.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -32,6 +34,8 @@ public class FileUploadChunkInitDTO {
      * 总分片数
      */
     @NotNull(message = "分片总数不能为空")
+    @Min(value = 1, message = "分片总数不能小于1")
+    @Max(value = 10000, message = "分片总数不能大于10000")
     private Integer chunkTotal;
 
 }
