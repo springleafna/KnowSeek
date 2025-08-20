@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/api/file")
+@RequestMapping("/file")
 @RequiredArgsConstructor
 public class FileController {
 
@@ -35,8 +35,8 @@ public class FileController {
      */
     @PostMapping("/chunk")
     public Result<String> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) {
-        String eTag = fileService.uploadChunk(fileUploadChunkDTO);
-        return Result.success(eTag);
+        String ETag = fileService.uploadChunk(fileUploadChunkDTO);
+        return Result.success(ETag);
     }
 
     /**

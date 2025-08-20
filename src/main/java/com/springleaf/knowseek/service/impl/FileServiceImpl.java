@@ -106,8 +106,8 @@ public class FileServiceImpl implements FileService {
     @Override
     public UploadInitVO initFileUpload(FileUploadChunkInitDTO dto) {
         String fileName = dto.getFileName();
-        // 验证文件类型是否支持
-        validateFileType(fileName);
+        // TODO:验证文件类型是否支持
+        // validateFileType(fileName);
 
         String fileMd5 = dto.getFileMd5();
         Long fileSize = dto.getFileSize();
@@ -160,6 +160,8 @@ public class FileServiceImpl implements FileService {
             fileUpload.setStatus(UploadStatusEnum.UPLOADING.getStatus());
             fileUpload.setUserId(userId);
             fileUpload.setTotalSize(fileSize);
+            // TODO:对于是否公开需要用户自行设置 或者 取消这个字段
+            fileUpload.setIsPublic(false);
             int saveResult = fileUploadMapper.saveFileUpload(fileUpload);
             if (saveResult < 1) {
                 throw new BusinessException("保存文件上传信息失败");
@@ -193,58 +195,47 @@ public class FileServiceImpl implements FileService {
             Integer chunkIndex = fileUploadChunkDTO.getChunkIndex();
             String chunkMd5 = fileUploadChunkDTO.getChunkMd5();
             String fileName = fileUploadChunkDTO.getFileName();
-            MultipartFile chunkFile = fileUploadChunkDTO.getFile();
+            String eTag = fileUploadChunkDTO.getETag();
+            Long chunkSize = fileUploadChunkDTO.getChunkSize();
 
-            // 校验分片编号
-            if (chunkIndex < 1) {
-                throw new BusinessException("分片编号必须从1开始");
-            }
-
+            // Redis Key
             String chunkInfoKey = String.format(RedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, chunkIndex);
-            // 检查分片是否已上传
+            String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+            String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+
+            // 检查分片是否已存在
             if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(chunkInfoKey))) {
                 String redisChunkMd5 = (String) stringRedisTemplate.opsForHash().get(chunkInfoKey, "chunkMd5");
-                if (chunkMd5.equals(redisChunkMd5)) {
+                if (chunkMd5 != null && chunkMd5.equals(redisChunkMd5)) {
+                    // 已经存在，直接返回之前的 ETag
                     return (String) stringRedisTemplate.opsForHash().get(chunkInfoKey, "eTag");
                 }
             }
 
-            // 上传到OSS
-            UploadPartRequest request = new UploadPartRequest();
-            request.setBucketName(ossConfig.getBucketName());
-            request.setKey(fileName);
-            request.setUploadId(uploadId);
-            request.setPartNumber(chunkIndex);
-            request.setInputStream(chunkFile.getInputStream());
-            request.setPartSize(chunkFile.getSize());
-
-            UploadPartResult result = ossClient.uploadPart(request);
-            String eTag = result.getETag();
-
-            long chunkSize = chunkFile.getSize();
-            String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
-            String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
-
+            // 保存分片信息
             Map<String, String> chunkInfo = new HashMap<>();
             chunkInfo.put("chunkMd5", chunkMd5);
             chunkInfo.put("chunkSize", String.valueOf(chunkSize));
             chunkInfo.put("eTag", eTag);
             chunkInfo.put("fileName", fileName);
-            // 保存分片信息到Redis
+
             stringRedisTemplate.opsForHash().putAll(chunkInfoKey, chunkInfo);
 
-            // 设置Redis BitMap 中该分片的状态为已上传
+            // 设置分片上传状态（BitMap）
             stringRedisTemplate.opsForValue().setBit(chunkStatusKey, chunkIndex - 1, true);
 
-            // 保存分片 ETag 有序列表
+            // 保存 ETag 到有序集合（ZSet，方便按序合并）
             stringRedisTemplate.opsForZSet().add(chunkETagKey, eTag, chunkIndex);
+
+            log.debug("分片上报成功: uploadId={}, chunkIndex={}, eTag={}", uploadId, chunkIndex, eTag);
 
             return eTag;
         } catch (Exception e) {
-            log.error("分片上传失败", e);
-            throw new BusinessException("分片上传失败: " + e.getMessage());
+            log.error("分片上报失败: {}", fileUploadChunkDTO, e);
+            throw new BusinessException("分片上报失败: " + e.getMessage());
         }
     }
+
 
     @Override
     public UploadCompleteVO completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO) {
@@ -357,6 +348,7 @@ public class FileServiceImpl implements FileService {
         // 检查是否为支持的文档类型
         if (SUPPORTED_DOCUMENT_EXTENSIONS.contains(extension)) {
             log.info("文件类型验证通过: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
+            // TODO:这里和下面不应该抛异常
             throw new BusinessException("支持的文件类型");
         }
 

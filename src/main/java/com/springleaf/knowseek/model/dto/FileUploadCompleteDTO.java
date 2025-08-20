@@ -1,5 +1,7 @@
 package com.springleaf.knowseek.model.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -8,7 +10,21 @@ import lombok.Data;
 @Data
 public class FileUploadCompleteDTO {
 
-    String fileName;
-    String uploadId;
+    /**
+     * 用于唯一标识文件
+     */
+    @NotBlank(message = "uploadId不能为空")
+    private String uploadId;
+
+    /**
+     * 文件名
+     */
+    @NotBlank(message = "文件名不能为空")
+    private String fileName;
+
+    /**
+     * 分片总数
+     */
+    @NotNull(message = "分片总数不能为空")
     Integer chunkTotalSize;
 }
