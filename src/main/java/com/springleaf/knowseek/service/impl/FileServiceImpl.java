@@ -31,6 +31,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -121,10 +122,11 @@ public class FileServiceImpl implements FileService {
         // URL 过期时间配置化
         long expireSeconds = ossConfig.getPresignedUrlExpiration();
         Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
-        log.debug("开始初始化文件上传，用户ID: {}, 文件名: {}, 文件MD5: {}", userId, fileName, fileMd5);
+        log.info("开始初始化文件上传，用户ID: {}, 文件名: {}, 文件MD5: {}", userId, fileName, fileMd5);
 
         try {
             // 根据文件Md5值和用户ID判断文件是否以及被上传成功（秒传逻辑）
+            // TODO：需要考虑存在但未上传成功的情况，由于md5唯一约束会导致插入出错
             FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId, UploadStatusEnum.COMPLETED.getStatus());
             if (fileUpload != null) {
                 log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
@@ -139,7 +141,7 @@ public class FileServiceImpl implements FileService {
                     ossConfig.getBucketName(), fileName);
             InitiateMultipartUploadResult result = ossClient.initiateMultipartUpload(request);
             String uploadId = result.getUploadId();
-            log.debug("OSS分片上传初始化成功，uploadId: {}", uploadId);
+            log.info("OSS分片上传初始化成功，uploadId: {}", uploadId);
 
             // 生成每个分片的直传 URL，返回预签名的 直传签名 URL，允许客户端在一段时间内直接向 OSS 上传分片
             Map<Integer, String> uploadUrls = new HashMap<>();
@@ -170,7 +172,7 @@ public class FileServiceImpl implements FileService {
             if (saveResult < 1) {
                 throw new BusinessException("保存文件上传信息失败");
             }
-            log.debug("文件上传信息已保存到数据库，上传状态设置为上传中");
+            log.info("文件上传信息已保存到数据库，上传状态设置为上传中");
 
             // 将文件上传信息存入Redis
             String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
@@ -184,7 +186,7 @@ public class FileServiceImpl implements FileService {
 
             stringRedisTemplate.opsForHash().putAll(fileUploadInfoKey, redisValue);
             stringRedisTemplate.expire(fileUploadInfoKey, expireSeconds, TimeUnit.SECONDS);
-            log.debug("文件上传信息已存入Redis，key: {}", fileUploadInfoKey);
+            log.info("文件上传信息已存入Redis，key: {}", fileUploadInfoKey);
 
             return new UploadInitVO(false, uploadId, null, uploadUrls);
         } catch (Exception e) {
@@ -223,7 +225,7 @@ public class FileServiceImpl implements FileService {
             // 保存 ETag 到有序集合（ZSet，方便按序合并）
             stringRedisTemplate.opsForZSet().add(chunkETagKey, eTag, chunkIndex);
 
-            log.debug("分片上报成功: uploadId={}, chunkIndex={}, eTag={}", uploadId, chunkIndex, eTag);
+            log.info("分片上报成功: uploadId={}, chunkIndex={}, eTag={}", uploadId, chunkIndex, eTag);
 
             return eTag;
         } catch (Exception e) {
@@ -269,9 +271,12 @@ public class FileServiceImpl implements FileService {
                 throw new BusinessException("未找到分片 ETag 信息，无法合并文件");
             }
 
+            // 正确转换为可变列表并排序
             List<PartETag> partETags = tuples.stream()
                     .map(tuple -> new PartETag(tuple.getScore().intValue(), tuple.getValue()))
-                    .toList();
+                    .collect(Collectors.toList());
+
+            partETags.sort(Comparator.comparing(PartETag::getPartNumber));
 
             // 设置文件上传路径
             Object userId = StpUtil.getLoginId();
@@ -285,11 +290,13 @@ public class FileServiceImpl implements FileService {
                     new CompleteMultipartUploadRequest(ossConfig.getBucketName(),
                             filePath, uploadId, partETags);
 
+            // TODO：合并失败待修改
             // 完成分片上传（合并分片）
             CompleteMultipartUploadResult result;
             try {
                 result = ossClient.completeMultipartUpload(completeRequest);
             } catch (Exception e) {
+                log.error("OSS 分片合并失败", e);
                 throw new BusinessException("OSS 分片合并失败: " + e.getMessage());
             }
             String location = result.getLocation();
@@ -365,7 +372,7 @@ public class FileServiceImpl implements FileService {
      * @param fileName 文件名
      */
     public void validateFileType(String fileName) {
-        log.debug("开始验证文件类型: fileName={}", fileName);
+        log.info("开始验证文件类型: fileName={}", fileName);
 
         if (fileName == null || fileName.trim().isEmpty()) {
             log.warn("文件名为空或null");
@@ -381,7 +388,7 @@ public class FileServiceImpl implements FileService {
 
         // 获取文件类型
         String fileType = getFileTypeDescription(extension);
-        log.debug("文件类型识别结果: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
+        log.info("文件类型识别结果: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
 
         // 检查是否为支持的文档类型
         if (SUPPORTED_DOCUMENT_EXTENSIONS.contains(extension)) {

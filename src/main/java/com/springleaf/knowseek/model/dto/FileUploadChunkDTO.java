@@ -1,5 +1,6 @@
 package com.springleaf.knowseek.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -31,7 +32,8 @@ public class FileUploadChunkDTO {
      * ETag
      */
     @NotNull(message = "分片ETag不能为空")
-    private String ETag;
+    @JsonProperty("ETag")
+    private String eTag;
 
     /**
      * 分片大小
