@@ -6,6 +6,7 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.*;
 import com.springleaf.knowseek.config.OssConfig;
+import com.springleaf.knowseek.constans.OssUserFilePathConstant;
 import com.springleaf.knowseek.constans.RedisKeyConstant;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
@@ -26,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URL;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -128,7 +131,6 @@ public class FileServiceImpl implements FileService {
                 return new UploadInitVO(true, null, fileUpload.getLocation(), null);
             }
 
-            // TODO：需要校验文件名是否合法
             // TODO：最好先保存上传信息到数据库再调用OSS初始化，防止数据库插入失败，uploadId 已在 OSS 存在，但无记录 → 成为“孤儿上传任务”。
             // TODO：启动定时任务扫描数据库和Redis并中止“超时未完成”的 uploadId
             // TODO：未处理 OSS 异常重试机制，ossClient.initiateMultipartUpload() 可能因网络抖动失败。
@@ -175,6 +177,7 @@ public class FileServiceImpl implements FileService {
             Map<String, String> redisValue = new HashMap<>();
             redisValue.put("id", String.valueOf(fileUpload.getId()));
             redisValue.put("fileName", fileName);
+            redisValue.put("extension", getFileExtension(fileName));
             redisValue.put("fileMd5", fileMd5);
             redisValue.put("userId", String.valueOf(userId));
             redisValue.put("chunkTotal", String.valueOf(chunkTotal));
@@ -279,10 +282,17 @@ public class FileServiceImpl implements FileService {
                     .map(tuple -> new PartETag(tuple.getScore().intValue(), tuple.getValue()))
                     .toList();
 
+            // 设置文件上传路径
+            Object userId = StpUtil.getLoginId();
+            String fileMd5 = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileMd5");
+            String extension = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "extension");
+            String timestamp = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+            String filePath = String.format(OssUserFilePathConstant.USER_FILE_PATH, userId, timestamp, fileMd5, extension);
+
             // 3. 执行 OSS 分片合并
             CompleteMultipartUploadRequest completeRequest =
                     new CompleteMultipartUploadRequest(ossConfig.getBucketName(),
-                            fileName, uploadId, partETags);
+                            filePath, uploadId, partETags);
 
             // 完成分片上传（合并分片）
             CompleteMultipartUploadResult result;
@@ -625,5 +635,24 @@ public class FileServiceImpl implements FileService {
             default:
                 return extension.toUpperCase() + "文件";
         }
+    }
+
+    /**
+     * 根据文件名获取文件扩展名 .xxx
+     */
+    public static String getFileExtension(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "";
+        }
+
+        int lastDotIndex = fileName.lastIndexOf('.');
+        int lastSeparatorIndex = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf('\\'));
+
+        // 确保点号在最后一个路径分隔符之后（处理类似 "path/to.file/name" 的情况）
+        if (lastDotIndex > lastSeparatorIndex && lastDotIndex < fileName.length() - 1) {
+            return fileName.substring(lastDotIndex).toLowerCase();
+        }
+
+        return "";
     }
 }
