@@ -3,6 +3,7 @@ package com.springleaf.knowseek.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.aliyun.oss.HttpMethod;
 import com.aliyun.oss.OSS;
+import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.*;
 import com.springleaf.knowseek.config.OssConfig;
 import com.springleaf.knowseek.constans.RedisKeyConstant;
@@ -15,6 +16,7 @@ import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
 import com.springleaf.knowseek.model.entity.FileUpload;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
+import com.springleaf.knowseek.model.vo.UploadProgressVO;
 import com.springleaf.knowseek.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -313,6 +315,7 @@ public class FileServiceImpl implements FileService {
             keysToDelete.add(fileUploadInfoKey);
             stringRedisTemplate.delete(keysToDelete);
 
+            log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
             // TODO：合并完成后需要根据 location 地址下载文件并发送 mq 消息进行文件的向量化处理
 
             return new UploadCompleteVO(false, null, location);
@@ -320,6 +323,40 @@ public class FileServiceImpl implements FileService {
             log.error("分片合并失败", e);
             throw new BusinessException("分片合并失败: " + e.getMessage());
         }
+    }
+
+    @Override
+    public UploadProgressVO getUploadProgress(String uploadId, String fileKey) {
+        String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+        String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+
+        // 先从 Redis 中判断分片是否全部上传
+
+        List<Integer> uploadedParts = new ArrayList<>();
+        // 调用阿里云 ListParts 接口 获取当前 UploadId 下已经成功上传的分片列表
+        try {
+            // 调用阿里云 OSS 的 ListParts 接口
+            ListPartsRequest listPartsRequest = new ListPartsRequest(ossConfig.getBucketName(), fileKey, uploadId);
+            PartListing partListing = ossClient.listParts(listPartsRequest);
+
+            // 提取已上传的 PartNumber
+            for (PartSummary part : partListing.getParts()) {
+                uploadedParts.add(part.getPartNumber());
+            }
+
+            // 排序，便于前端查看
+            uploadedParts.sort(Integer::compareTo);
+
+        } catch (OSSException e) {
+            if ("NoSuchUpload".equals(e.getErrorCode())) {
+                // uploadId 不存在或已过期，视为“无分片上传”
+                uploadedParts.clear();
+            } else {
+                throw e; // 其他错误抛出
+            }
+        }
+
+        return new UploadProgressVO(uploadedParts);
     }
 
     /**

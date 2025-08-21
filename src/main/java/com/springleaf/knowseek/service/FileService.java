@@ -5,6 +5,7 @@ import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
+import com.springleaf.knowseek.model.vo.UploadProgressVO;
 
 import java.io.IOException;
 
@@ -25,4 +26,9 @@ public interface FileService {
      * 完成分片上传，进行合并
      */
     UploadCompleteVO completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO);
+
+    /**
+     * 获取上传进度
+     */
+    UploadProgressVO getUploadProgress(String uploadId, String fileKey);
 }

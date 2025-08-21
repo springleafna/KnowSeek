@@ -7,6 +7,7 @@ import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
 import com.springleaf.knowseek.model.dto.FileUploadPauseDTO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
+import com.springleaf.knowseek.model.vo.UploadProgressVO;
 import com.springleaf.knowseek.service.FileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,14 @@ public class FileController {
     public Result<UploadInitVO> initiateMultipartUpload(@RequestBody @Valid FileUploadChunkInitDTO fileUploadChunkInitDTO) {
         UploadInitVO uploadInitVO = fileService.initFileUpload(fileUploadChunkInitDTO);
         return Result.success(uploadInitVO);
+    }
+
+    /**
+     * 获取上传进度
+     */
+    @GetMapping("/progress")
+    public Result<UploadProgressVO> getUploadProgress(String uploadId, String fileKey) {
+        return Result.success(fileService.getUploadProgress(uploadId, fileKey));
     }
 
     /**
