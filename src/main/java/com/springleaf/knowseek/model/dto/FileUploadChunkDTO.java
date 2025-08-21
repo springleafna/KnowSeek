@@ -28,18 +28,6 @@ public class FileUploadChunkDTO {
     private Integer chunkIndex;
 
     /**
-     * 文件名
-     */
-    @NotBlank(message = "文件名不能为空")
-    private String fileName;
-
-    /**
-     * 分片Md5
-     */
-    @NotBlank(message = "分片文件Md5不能为空")
-    private String chunkMd5;
-
-    /**
      * ETag
      */
     @NotNull(message = "分片ETag不能为空")

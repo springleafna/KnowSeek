@@ -198,8 +198,6 @@ public class FileServiceImpl implements FileService {
         try {
             String uploadId = fileUploadChunkDTO.getUploadId();
             Integer chunkIndex = fileUploadChunkDTO.getChunkIndex();
-            String chunkMd5 = fileUploadChunkDTO.getChunkMd5();
-            String fileName = fileUploadChunkDTO.getFileName();
             String eTag = fileUploadChunkDTO.getETag();
             Long chunkSize = fileUploadChunkDTO.getChunkSize();
 
@@ -207,23 +205,16 @@ public class FileServiceImpl implements FileService {
             String chunkInfoKey = String.format(RedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, chunkIndex);
             String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
             String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+            String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
-            // 检查分片是否已存在
-            if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(chunkInfoKey))) {
-                String redisChunkMd5 = (String) stringRedisTemplate.opsForHash().get(chunkInfoKey, "chunkMd5");
-                if (chunkMd5 != null && chunkMd5.equals(redisChunkMd5)) {
-                    // 已经存在，直接返回之前的 ETag
-                    return (String) stringRedisTemplate.opsForHash().get(chunkInfoKey, "eTag");
-                }
-            }
-
+            String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             // 保存分片信息
             Map<String, String> chunkInfo = new HashMap<>();
-            chunkInfo.put("chunkMd5", chunkMd5);
             chunkInfo.put("chunkSize", String.valueOf(chunkSize));
             chunkInfo.put("eTag", eTag);
             chunkInfo.put("fileName", fileName);
 
+            // 设置分片信息
             stringRedisTemplate.opsForHash().putAll(chunkInfoKey, chunkInfo);
 
             // 设置分片上传状态（BitMap）
