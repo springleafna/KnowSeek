@@ -6,7 +6,7 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.*;
 import com.springleaf.knowseek.config.OssConfig;
-import com.springleaf.knowseek.constans.OssUserFilePathConstant;
+import com.springleaf.knowseek.constans.OssUserFileKeyConstant;
 import com.springleaf.knowseek.constans.RedisKeyConstant;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
@@ -24,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URL;
 import java.time.LocalDate;
@@ -116,9 +115,10 @@ public class FileServiceImpl implements FileService {
         // validateFileType(fileName);
 
         String fileMd5 = dto.getFileMd5();
-        Long fileSize = dto.getFileSize();
-        Integer chunkTotal = dto.getChunkTotal();
+        Long fileSize = dto.getFileSize();  //文件大小
+        Integer chunkTotal = dto.getChunkTotal();   // 分片总数
         Long userId = StpUtil.getLoginIdAsLong();
+        String extension = getFileExtension(fileName);  // 获取文件扩展名：.xxx
         // URL 过期时间配置化
         long expireSeconds = ossConfig.getPresignedUrlExpiration();
         Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
@@ -136,9 +136,12 @@ public class FileServiceImpl implements FileService {
             // TODO：最好先保存上传信息到数据库再调用OSS初始化，防止数据库插入失败，uploadId 已在 OSS 存在，但无记录 → 成为“孤儿上传任务”。
             // TODO：启动定时任务扫描数据库和Redis并中止“超时未完成”的 uploadId
             // TODO：未处理 OSS 异常重试机制，ossClient.initiateMultipartUpload() 可能因网络抖动失败。
+            // 设置文件上传路径
+            String timestamp = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);    // 获取当前时间：如20250823
+            String fileKey = String.format(OssUserFileKeyConstant.USER_UPLOAD_FILE_KEY, userId, timestamp, fileMd5, extension);
             // 未秒传，进行文件上传OSS初始化
             InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(
-                    ossConfig.getBucketName(), fileName);
+                    ossConfig.getBucketName(), fileKey);
             InitiateMultipartUploadResult result = ossClient.initiateMultipartUpload(request);
             String uploadId = result.getUploadId();
             log.info("OSS分片上传初始化成功，uploadId: {}", uploadId);
@@ -147,7 +150,7 @@ public class FileServiceImpl implements FileService {
             Map<Integer, String> uploadUrls = new HashMap<>();
             for (int i = 1; i <= dto.getChunkTotal(); i++) {
                 GeneratePresignedUrlRequest urlRequest =
-                        new GeneratePresignedUrlRequest(ossConfig.getBucketName(), fileName, HttpMethod.PUT);
+                        new GeneratePresignedUrlRequest(ossConfig.getBucketName(), fileKey, HttpMethod.PUT);
                 urlRequest.setExpiration(expiration);
                 // 把 uploadId 和 partNumber 作为 query 参数
                 Map<String, String> queryParams = new HashMap<>(2);
@@ -179,7 +182,8 @@ public class FileServiceImpl implements FileService {
             Map<String, String> redisValue = new HashMap<>();
             redisValue.put("id", String.valueOf(fileUpload.getId()));
             redisValue.put("fileName", fileName);
-            redisValue.put("extension", getFileExtension(fileName));
+            redisValue.put("fileKey", fileKey);
+            redisValue.put("extension", extension);
             redisValue.put("fileMd5", fileMd5);
             redisValue.put("userId", String.valueOf(userId));
             redisValue.put("chunkTotal", String.valueOf(chunkTotal));
@@ -247,8 +251,11 @@ public class FileServiceImpl implements FileService {
             String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
             String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
+            // 获取该分片归属的文件的id
+            String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            Long id = Long.valueOf(idStr);
             // 1. 验证分片是否全部上传
-            List<Integer> pendingChunkIndexList = new ArrayList<>();
+            /*List<Integer> pendingChunkIndexList = new ArrayList<>();
             for (int i = 0; i < chunkTotalSize; i++) {
                 // TODO：Bitmap 验证时的性能优化
                 Boolean isUploaded = stringRedisTemplate.opsForValue().getBit(chunkStatusKey, i);
@@ -276,19 +283,17 @@ public class FileServiceImpl implements FileService {
                     .map(tuple -> new PartETag(tuple.getScore().intValue(), tuple.getValue()))
                     .collect(Collectors.toList());
 
-            partETags.sort(Comparator.comparing(PartETag::getPartNumber));
+            partETags.sort(Comparator.comparing(PartETag::getPartNumber));*/
 
             // 设置文件上传路径
-            Object userId = StpUtil.getLoginId();
-            String fileMd5 = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileMd5");
-            String extension = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "extension");
-            String timestamp = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
-            String filePath = String.format(OssUserFilePathConstant.USER_FILE_PATH, userId, timestamp, fileMd5, extension);
+            String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
+            // 从阿里云OSS获取PartETag列表
+            List<PartETag> partETagList = getPartETagList(uploadId, fileKey);
 
             // 3. 执行 OSS 分片合并
             CompleteMultipartUploadRequest completeRequest =
                     new CompleteMultipartUploadRequest(ossConfig.getBucketName(),
-                            filePath, uploadId, partETags);
+                            fileKey, uploadId, partETagList);
 
             // TODO：合并失败待修改
             // 完成分片上传（合并分片）
@@ -297,13 +302,14 @@ public class FileServiceImpl implements FileService {
                 result = ossClient.completeMultipartUpload(completeRequest);
             } catch (Exception e) {
                 log.error("OSS 分片合并失败", e);
+                fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.FAILED.getStatus());
                 throw new BusinessException("OSS 分片合并失败: " + e.getMessage());
             }
+
+            // 获取上传成功后的阿里云OSS文件地址
             String location = result.getLocation();
 
             // 4. 更新数据库记录
-            // 获取该分片归属的文件的id
-            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
             // 更新文件OSS路径
             if (fileUploadMapper.updateOSSLocation(id, location) < 1) {
                 throw new BusinessException("文件OSS路径设置失败");
@@ -365,6 +371,17 @@ public class FileServiceImpl implements FileService {
         }
 
         return new UploadProgressVO(uploadedParts);
+    }
+
+    public List<PartETag> getPartETagList(String uploadId, String fileKey) {
+        // 调用阿里云 OSS 的 ListParts 接口
+        ListPartsRequest listPartsRequest = new ListPartsRequest(ossConfig.getBucketName(), fileKey, uploadId);
+        PartListing partListing = ossClient.listParts(listPartsRequest);
+
+        // 将 Part 列表转换为 PartETag 列表
+        return partListing.getParts().stream()
+                .map(part -> new PartETag(part.getPartNumber(), part.getETag()))
+                .collect(Collectors.toList());
     }
 
     /**
