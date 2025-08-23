@@ -27,7 +27,7 @@
 
     <!-- 判断文件是否已上传成功 -->
     <select id="existFileUpload" resultMap="resultMap">
-        SELECT * FROM tb_file_upload WHERE file_md5 = #{fileMd5} AND user_id = #{userId} AND status = #{status}
+        SELECT * FROM tb_file_upload WHERE file_md5 = #{fileMd5} AND user_id = #{userId}
     </select>
 
     <!-- 更新文件的 OSS 地址 -->

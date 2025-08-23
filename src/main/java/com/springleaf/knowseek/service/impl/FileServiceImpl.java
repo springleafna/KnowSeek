@@ -1,6 +1,7 @@
 package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.aliyun.oss.ClientException;
 import com.aliyun.oss.HttpMethod;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSException;
@@ -114,23 +115,34 @@ public class FileServiceImpl implements FileService {
         // TODO:验证文件类型是否支持
         // validateFileType(fileName);
 
+        Long userId = StpUtil.getLoginIdAsLong();
         String fileMd5 = dto.getFileMd5();
         Long fileSize = dto.getFileSize();  //文件大小
         Integer chunkTotal = dto.getChunkTotal();   // 分片总数
-        Long userId = StpUtil.getLoginIdAsLong();
         String extension = getFileExtension(fileName);  // 获取文件扩展名：.xxx
         // URL 过期时间配置化
         long expireSeconds = ossConfig.getPresignedUrlExpiration();
         Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
-        log.info("开始初始化文件上传，用户ID: {}, 文件名: {}, 文件MD5: {}", userId, fileName, fileMd5);
+        log.info("开始初始化文件上传，用户ID: {}, 文件名: {}, 文件MD5: {}, 文件大小：{}, 分片总数：{}", userId, fileName, fileMd5, fileSize, chunkTotal);
 
         try {
             // 根据文件Md5值和用户ID判断文件是否以及被上传成功（秒传逻辑）
+            // TODO：先从Redis中获取
             // TODO：需要考虑存在但未上传成功的情况，由于md5唯一约束会导致插入出错
-            FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId, UploadStatusEnum.COMPLETED.getStatus());
-            if (fileUpload != null) {
+            FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId);
+            if (fileUpload != null && fileUpload.getStatus().equals(UploadStatusEnum.COMPLETED.getStatus())) {
                 log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
                 return new UploadInitVO(true, null, fileUpload.getLocation(), null);
+            }
+            if (fileUpload != null && fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus())) {
+                // TODO：该文件正在上传中，是否应该提醒用户
+                log.info("fileName:{}，该文件正在上传中", fileName);
+                return new UploadInitVO(true, null, null, null);
+            }
+            if (fileUpload != null && fileUpload.getStatus().equals(UploadStatusEnum.FAILED.getStatus())) {
+                // TODO：该文件上传失败，要采取重新上传流程
+                log.info("fileName:{}，该文件上传失败", fileName);
+                return new UploadInitVO(true, null, null, null);
             }
 
             // TODO：最好先保存上传信息到数据库再调用OSS初始化，防止数据库插入失败，uploadId 已在 OSS 存在，但无记录 → 成为“孤儿上传任务”。
@@ -139,27 +151,41 @@ public class FileServiceImpl implements FileService {
             // 设置文件上传路径
             String timestamp = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);    // 获取当前时间：如20250823
             String fileKey = String.format(OssUserFileKeyConstant.USER_UPLOAD_FILE_KEY, userId, timestamp, fileMd5, extension);
+
             // 未秒传，进行文件上传OSS初始化
-            InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(
-                    ossConfig.getBucketName(), fileKey);
-            InitiateMultipartUploadResult result = ossClient.initiateMultipartUpload(request);
-            String uploadId = result.getUploadId();
-            log.info("OSS分片上传初始化成功，uploadId: {}", uploadId);
+            String uploadId;
+            Map<Integer, String> uploadUrls = new HashMap<>();  // 每个分片的预签名，传给前端进行阿里云OSS上传
+            try {
+                InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(
+                        ossConfig.getBucketName(), fileKey);
+                InitiateMultipartUploadResult result = ossClient.initiateMultipartUpload(request);
+                uploadId = result.getUploadId();
+                log.info("OSS分片上传初始化成功，uploadId: {}", uploadId);
 
-            // 生成每个分片的直传 URL，返回预签名的 直传签名 URL，允许客户端在一段时间内直接向 OSS 上传分片
-            Map<Integer, String> uploadUrls = new HashMap<>();
-            for (int i = 1; i <= dto.getChunkTotal(); i++) {
-                GeneratePresignedUrlRequest urlRequest =
-                        new GeneratePresignedUrlRequest(ossConfig.getBucketName(), fileKey, HttpMethod.PUT);
-                urlRequest.setExpiration(expiration);
-                // 把 uploadId 和 partNumber 作为 query 参数
-                Map<String, String> queryParams = new HashMap<>(2);
-                queryParams.put("uploadId", uploadId);
-                queryParams.put("partNumber", String.valueOf(i));
-                urlRequest.setQueryParameter(queryParams);
+                // 生成每个分片的直传 URL，返回预签名的 直传签名 URL，允许客户端在一段时间内直接向 OSS 上传分片
+                for (int i = 1; i <= dto.getChunkTotal(); i++) {
+                    GeneratePresignedUrlRequest urlRequest =
+                            new GeneratePresignedUrlRequest(ossConfig.getBucketName(), fileKey, HttpMethod.PUT);
+                    urlRequest.setExpiration(expiration);
+                    // 把 uploadId 和 partNumber 作为 query 参数
+                    Map<String, String> queryParams = new HashMap<>(2);
+                    queryParams.put("uploadId", uploadId);
+                    queryParams.put("partNumber", String.valueOf(i));
+                    urlRequest.setQueryParameter(queryParams);
 
-                URL signedUrl = ossClient.generatePresignedUrl(urlRequest);
-                uploadUrls.put(i, signedUrl.toString());
+                    URL signedUrl = ossClient.generatePresignedUrl(urlRequest);
+                    uploadUrls.put(i, signedUrl.toString());
+                }
+            } catch (OSSException e) {
+                // OSS 服务端异常：如权限不足、Bucket 不存在、文件名非法等
+                log.error("OSS服务端错误，初始化分片上传失败。Bucket: {}, fileKey: {}, Message: {}, ErrorCode: {}, RequestId: {}",
+                        ossConfig.getBucketName(), fileKey, e.getMessage(), e.getErrorCode(), e.getRequestId(), e);
+                throw new RuntimeException("文件上传初始化失败（OSS错误）: " + e.getMessage(), e);
+            } catch (ClientException e) {
+                // 客户端异常：如网络连接失败、SDK 内部错误、参数错误等
+                log.error("客户端错误，初始化分片上传失败。Bucket: {}, fileKey: {}, Message: {}",
+                        ossConfig.getBucketName(), fileKey, e.getMessage(), e);
+                throw new RuntimeException("文件上传初始化失败（网络或客户端错误）: " + e.getMessage(), e);
             }
 
             // 将文件上传信息保存到数据库，设置上传状态为上传中
@@ -171,10 +197,7 @@ public class FileServiceImpl implements FileService {
             fileUpload.setTotalSize(fileSize);
             // TODO:对于是否公开需要用户自行设置 或者 取消这个字段
             fileUpload.setIsPublic(false);
-            int saveResult = fileUploadMapper.saveFileUpload(fileUpload);
-            if (saveResult < 1) {
-                throw new BusinessException("保存文件上传信息失败");
-            }
+            fileUploadMapper.saveFileUpload(fileUpload);
             log.info("文件上传信息已保存到数据库，上传状态设置为上传中");
 
             // 将文件上传信息存入Redis
@@ -295,7 +318,6 @@ public class FileServiceImpl implements FileService {
                     new CompleteMultipartUploadRequest(ossConfig.getBucketName(),
                             fileKey, uploadId, partETagList);
 
-            // TODO：合并失败待修改
             // 完成分片上传（合并分片）
             CompleteMultipartUploadResult result;
             try {
@@ -311,14 +333,12 @@ public class FileServiceImpl implements FileService {
 
             // 4. 更新数据库记录
             // 更新文件OSS路径
-            if (fileUploadMapper.updateOSSLocation(id, location) < 1) {
-                throw new BusinessException("文件OSS路径设置失败");
-            }
+            fileUploadMapper.updateOSSLocation(id, location);
+
             // 更新数据库该文件上传状态为上传完成
             // TODO：可能出现数据库更新失败，状态不一致（OSS 文件已经在，但 DB 状态没更新）
-            if (fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.COMPLETED.getStatus()) < 1) {
-                throw new BusinessException("文件上传状态更新失败");
-            }
+            fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.COMPLETED.getStatus());
+
             // 5. 删除 Redis 分片相关的缓存（批量删除）
             List<String> keysToDelete = new ArrayList<>();
             for (int i = 1; i <= chunkTotalSize; i++) {
@@ -326,7 +346,6 @@ public class FileServiceImpl implements FileService {
             }
             keysToDelete.add(chunkStatusKey);
             keysToDelete.add(chunkETagKey);
-            keysToDelete.add(fileUploadInfoKey);
             stringRedisTemplate.delete(keysToDelete);
 
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
@@ -374,14 +393,41 @@ public class FileServiceImpl implements FileService {
     }
 
     public List<PartETag> getPartETagList(String uploadId, String fileKey) {
-        // 调用阿里云 OSS 的 ListParts 接口
-        ListPartsRequest listPartsRequest = new ListPartsRequest(ossConfig.getBucketName(), fileKey, uploadId);
-        PartListing partListing = ossClient.listParts(listPartsRequest);
+        if (uploadId == null || uploadId.trim().isEmpty()) {
+            log.warn("getPartETagList 调用失败：uploadId 不能为空");
+            throw new IllegalArgumentException("uploadId 不能为空");
+        }
+        if (fileKey == null || fileKey.trim().isEmpty()) {
+            log.warn("getPartETagList 调用失败：fileKey 不能为空");
+            throw new IllegalArgumentException("fileKey 不能为空");
+        }
 
-        // 将 Part 列表转换为 PartETag 列表
-        return partListing.getParts().stream()
-                .map(part -> new PartETag(part.getPartNumber(), part.getETag()))
-                .collect(Collectors.toList());
+        try {
+            // 调用阿里云 OSS 的 ListParts 接口
+            ListPartsRequest listPartsRequest = new ListPartsRequest(
+                    ossConfig.getBucketName(),
+                    fileKey,
+                    uploadId
+            );
+
+            PartListing partListing = ossClient.listParts(listPartsRequest);
+
+            // 将 Part 列表转换为 PartETag 列表
+            return partListing.getParts().stream()
+                    .map(part -> new PartETag(part.getPartNumber(), part.getETag()))
+                    .collect(Collectors.toList());
+
+        } catch (OSSException e) {
+            // OSS 服务端异常：如 NoSuchUpload, AccessDenied, NoSuchBucket 等
+            log.error("OSS服务端错误 - ListParts 失败。Bucket: {}, fileKey: {}, uploadId: {}, ErrorCode: {}, Message: {}, RequestId: {}",
+                    ossConfig.getBucketName(), fileKey, uploadId, e.getErrorCode(), e.getMessage(), e.getRequestId(), e);
+            throw new RuntimeException("OSS 错误: " + e.getMessage(), e);
+        } catch (ClientException e) {
+            // 客户端异常：网络问题、SDK内部错误等
+            log.error("客户端错误 - 调用 ListParts 失败。Bucket: {}, fileKey: {}, uploadId: {}, Message: {}",
+                    ossConfig.getBucketName(), fileKey, uploadId, e.getMessage(), e);
+            throw new RuntimeException("网络或客户端错误，无法获取分片列表", e);
+        }
     }
 
     /**
