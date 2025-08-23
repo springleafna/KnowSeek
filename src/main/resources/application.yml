@@ -17,6 +17,17 @@ spring:
       enabled: true
       max-file-size: 50MB # 单个文件的最大大小
       max-request-size: 100MB # 整个请求的最大大小
+  rabbitmq:
+    addresses: 120.26.236.122
+    port: 5672
+    username: springleaf
+    password: 123123
+    listener:
+      simple:
+        prefetch: 1 # 每次投递n个消息，消费完在投递n个
+    topic:
+      file-processing-vectorize: file.processing.vectorize
+
 mybatis:
   mapper-locations: classpath:/mapper/*.xml
 logging:
@@ -37,7 +48,7 @@ sa-token:
   # token风格
   token-style: uuid
   # 是否输出操作日志
-  is-log: false
+  is-log: true
   # 关闭从 Cookie 读取
   is-read-cookie: false
 # 阿里云OSS配置
