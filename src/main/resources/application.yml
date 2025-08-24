@@ -20,13 +20,27 @@ spring:
   rabbitmq:
     addresses: 120.26.236.122
     port: 5672
-    username: springleaf
-    password: 123123
+    username: admin
+    password: admin
     listener:
       simple:
         prefetch: 1 # 每次投递n个消息，消费完在投递n个
     topic:
       file-processing-vectorize: file.processing.vectorize
+  ai:
+    dashscope:
+      chat:
+        api-key: sk-0393395839294d9491512a924a61d6b9
+        base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+        # Embedding 模型
+        embedding:
+          model: text-embedding-v4
+          dimensions: 1024
+        # Chat 模型（RAG 回答用）
+        chat:
+          model: qwen-plus
+  elasticsearch:
+    uris: 120.26.236.122:9200
 
 mybatis:
   mapper-locations: classpath:/mapper/*.xml
