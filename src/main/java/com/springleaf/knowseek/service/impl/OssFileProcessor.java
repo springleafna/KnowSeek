@@ -24,7 +24,8 @@ public class OssFileProcessor {
         String text = downloadFromOSS(ossUrl);
         List<String> chunks = splitText(text, 600, 100);
         List<List<Double>> vectors = embeddingService.embedTexts(chunks);
-        esStorageService.saveChunks(chunks, vectors);
+        String fileName = extractFileNameFromUrl(ossUrl);
+        esStorageService.saveChunks(fileName, ossUrl, chunks, vectors);
     }
 
     private String downloadFromOSS(String ossUrl) throws IOException {
@@ -42,6 +43,15 @@ public class OssFileProcessor {
             start += chunkSize - overlap;
         }
         return chunks;
+    }
+
+    private String extractFileNameFromUrl(String url) {
+        try {
+            String[] parts = url.split("/");
+            return parts[parts.length - 1];
+        } catch (Exception e) {
+            return "unknown_file";
+        }
     }
 }
 

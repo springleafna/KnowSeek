@@ -3,6 +3,7 @@ package com.springleaf.knowseek.service.impl;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -14,7 +15,15 @@ public class EmbeddingService {
     }
 
     public List<List<Double>> embedTexts(List<String> texts) {
-        //return embeddingModel.embed(texts);
-        return null;
+        List<float[]> embeddings = embeddingModel.embed(texts);
+        return embeddings.stream()
+                .map(floatArray -> {
+                    List<Double> doubleList = new ArrayList<>();
+                    for (float f : floatArray) {
+                        doubleList.add((double) f);
+                    }
+                    return doubleList;
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 }

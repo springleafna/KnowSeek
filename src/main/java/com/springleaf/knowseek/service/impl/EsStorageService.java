@@ -18,11 +18,15 @@ public class EsStorageService {
         this.esClient = esClient;
     }
 
-    public void saveChunks(List<String> chunks, List<List<Double>> vectors) throws IOException {
+    public void saveChunks(String fileName, String fileLocation, List<String> chunks, List<List<Double>> vectors) throws IOException {
         for (int i = 0; i < chunks.size(); i++) {
             Map<String, Object> doc = new HashMap<>();
             doc.put("content", chunks.get(i));
             doc.put("vector", vectors.get(i));
+            doc.put("fileName", fileName);
+            doc.put("fileLocation", fileLocation);
+            doc.put("chunkIndex", i);
+            doc.put("timestamp", System.currentTimeMillis());
 
             esClient.index(IndexRequest.of(r -> r
                     .index("documents")
