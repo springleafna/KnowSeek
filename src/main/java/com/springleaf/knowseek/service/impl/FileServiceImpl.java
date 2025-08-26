@@ -19,6 +19,8 @@ import com.springleaf.knowseek.model.entity.FileUpload;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.model.vo.UploadProgressVO;
+import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
+import com.springleaf.knowseek.mq.producer.EventPublisher;
 import com.springleaf.knowseek.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,8 @@ public class FileServiceImpl implements FileService {
     private final OSS ossClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final FileUploadMapper fileUploadMapper;
+    private final EventPublisher eventPublisher;
+    private final FileVectorizeEvent fileVectorizeEvent;
 
 
     /**
@@ -350,6 +354,8 @@ public class FileServiceImpl implements FileService {
 
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
             // TODO：合并完成后需要根据 location 地址下载文件并发送 mq 消息进行文件的向量化处理
+            FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage.builder().location(location).build();
+            eventPublisher.publish(fileVectorizeEvent.topic(), fileVectorizeEvent.buildEventMessage(fileVectorizeMessage));
 
             return new UploadCompleteVO(false, null, location);
         } catch (Exception e) {

@@ -8,10 +8,35 @@ import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
 import com.springleaf.knowseek.constans.RedisKeyConstant;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.File;
+import java.util.List;
 
+@SpringBootTest
 public class ApiTest {
+
+    @Autowired
+    private EmbeddingModel embeddingModel;
+
+    @Test
+    public void testEmbeddingConnection() {
+        try {
+            // 测试少量文本
+            List<String> texts = List.of("测试连接", "hello world", "spring ai");
+
+            List<float[]> embeddings = embeddingModel.embed(texts);
+
+            System.out.println("连接成功！");
+            System.out.println("嵌入向量维度: " + embeddings.size());
+
+        } catch (Exception e) {
+            System.err.println("连接失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     @Test
     public void test_getEnv() {

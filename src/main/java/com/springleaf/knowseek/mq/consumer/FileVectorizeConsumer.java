@@ -2,7 +2,6 @@ package com.springleaf.knowseek.mq.consumer;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.springleaf.knowseek.mq.event.BaseEvent;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
 import com.springleaf.knowseek.service.impl.EmbeddingService;
@@ -64,7 +63,7 @@ public class FileVectorizeConsumer {
             
             // 3. 向量化处理
             List<List<Double>> vectors = embeddingService.embedTexts(chunks);
-            log.info("文档向量化完成");
+            log.info("文档向量化完成，生成 {} 个向量", vectors.size());
             
             // 4. 存储到ES
             String fileName = extractFileNameFromUrl(location);
