@@ -29,14 +29,24 @@ spring:
       file-processing-vectorize: file.processing.vectorize
   ai:
     dashscope:
+      # 全局配置
       api-key: sk-0393395839294d9491512a924a61d6b9
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+
+      # 嵌入模型配置（用于向量化）
       embedding:
         model: text-embedding-v2
         options:
           dimensions: 1024
+          # text-type: document  # 可选：query 或 document
+
+      # 聊天模型配置（用于对话）
       chat:
         model: qwen-plus
+        options:
+          top_p: 0.8
+          temperature: 0.7
+          # 是否联网搜索 enable_search: true
   elasticsearch:
     uris: 120.26.236.122:9200
 
