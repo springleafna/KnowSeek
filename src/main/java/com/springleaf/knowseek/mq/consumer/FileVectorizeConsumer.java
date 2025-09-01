@@ -288,7 +288,7 @@ public class FileVectorizeConsumer {
     private void processBatch(List<String> batch, BlockingQueue<ChunkWithVector> vectorQueue) {
         try {
             log.info("开始向量化批次处理，共 {} 个文本块", batch.size());
-            List<List<Double>> vectors = embeddingService.embedTexts(new ArrayList<>(batch));
+            List<float[]> vectors = embeddingService.embedTexts(new ArrayList<>(batch));
             
             for (int i = 0; i < batch.size(); i++) {
                 vectorQueue.offer(new ChunkWithVector(batch.get(i), vectors.get(i)));
@@ -306,7 +306,7 @@ public class FileVectorizeConsumer {
     private void storeVectors(String fileName, String fileLocation, BlockingQueue<ChunkWithVector> vectorQueue) {
         try {
             List<String> chunkBatch = new ArrayList<>();
-            List<List<Double>> vectorBatch = new ArrayList<>();
+            List<float[]> vectorBatch = new ArrayList<>();
             ChunkWithVector item;
             
             while (true) {
@@ -377,6 +377,6 @@ public class FileVectorizeConsumer {
         /**
          * 文本块和向量的包装类
          */
-        private record ChunkWithVector(String chunk, List<Double> vector) {
+        private record ChunkWithVector(String chunk, float[] vector) {
     }
 }

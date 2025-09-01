@@ -19,9 +19,9 @@ public class EmbeddingService {
         this.embeddingModel = embeddingModel;
     }
 
-    public List<List<Double>> embedTexts(List<String> texts) {
-        List<List<Double>> allEmbeddings = new ArrayList<>();
-        
+    public List<float[]> embedTexts(List<String> texts) {
+        List<float[]> allEmbeddings = new ArrayList<>();
+
         log.info("开始向量化处理，共 {} 个文本，将分 {} 批处理", texts.size(), (texts.size() + MAX_BATCH_SIZE - 1) / MAX_BATCH_SIZE);
         
         // 分批处理文本
@@ -45,19 +45,8 @@ public class EmbeddingService {
             
             // 对当前批次进行向量化
             List<float[]> batchEmbeddings = embeddingModel.embed(batch);
-            
-            // 转换为 Double 列表并添加到结果中
-            List<List<Double>> batchDoubleEmbeddings = batchEmbeddings.stream()
-                    .map(floatArray -> {
-                        List<Double> doubleList = new ArrayList<>();
-                        for (float f : floatArray) {
-                            doubleList.add((double) f);
-                        }
-                        return doubleList;
-                    })
-                    .toList();
-            
-            allEmbeddings.addAll(batchDoubleEmbeddings);
+
+            allEmbeddings.addAll(batchEmbeddings);
             log.info("第 {} 批处理完成，已生成 {} 个向量", (i / MAX_BATCH_SIZE) + 1, allEmbeddings.size());
         }
         
