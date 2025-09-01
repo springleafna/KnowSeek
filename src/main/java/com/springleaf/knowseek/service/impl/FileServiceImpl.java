@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URL;
 import java.time.LocalDate;
@@ -265,11 +266,13 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public UploadCompleteVO completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO) {
         try {
-            log.info("进行分片合并: {}", fileUploadCompleteDTO);
+            log.info("开始分片合并: uploadId={}, fileName={}",
+                    fileUploadCompleteDTO.getUploadId(), fileUploadCompleteDTO.getFileName());
+
             String fileName = fileUploadCompleteDTO.getFileName();
             String uploadId = fileUploadCompleteDTO.getUploadId();
             Integer chunkTotalSize = fileUploadCompleteDTO.getChunkTotalSize();
@@ -278,51 +281,62 @@ public class FileServiceImpl implements FileService {
             String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
             String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
-            // 获取该分片归属的文件的id
+            // 1. 获取文件信息
             String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
-            Long id = Long.valueOf(idStr);
-            // 1. 验证分片是否全部上传
-            /*List<Integer> pendingChunkIndexList = new ArrayList<>();
-            for (int i = 0; i < chunkTotalSize; i++) {
-                // TODO：Bitmap 验证时的性能优化
-                Boolean isUploaded = stringRedisTemplate.opsForValue().getBit(chunkStatusKey, i);
-                // 记录未上传的分片索引
-                if (Boolean.FALSE.equals(isUploaded)) {
-                    pendingChunkIndexList.add(i);
-                }
-            }
-            if (!pendingChunkIndexList.isEmpty()) {
-                // 将未上传的分片返回给前端重新上传
-                return new UploadCompleteVO(true, pendingChunkIndexList, null);
-            }
-
-            // TODO：需要在合并前加一个完整性比对（本地已上传分片数 vs OSS 已上传分片数），因为对 ETag 数据强依赖
-            // 2. 获取 Redis 中 分片 ETag 有序列表进行合并
-            // 从ZSet中按score（即chunkIndex）顺序获取所有ETag
-            Set<ZSetOperations.TypedTuple<String>> tuples =
-                    stringRedisTemplate.opsForZSet().rangeWithScores(chunkETagKey, 0, -1);
-            if (tuples.isEmpty()) {
-                throw new BusinessException("未找到分片 ETag 信息，无法合并文件");
-            }
-
-            // 正确转换为可变列表并排序
-            List<PartETag> partETags = tuples.stream()
-                    .map(tuple -> new PartETag(tuple.getScore().intValue(), tuple.getValue()))
-                    .collect(Collectors.toList());
-
-            partETags.sort(Comparator.comparing(PartETag::getPartNumber));*/
-
-            // 设置文件上传路径
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
-            // 从阿里云OSS获取PartETag列表
-            List<PartETag> partETagList = getPartETagList(uploadId, fileKey);
+
+            if (idStr == null || fileKey == null) {
+                throw new BusinessException("文件上传信息不完整");
+            }
+            long id = Long.parseLong(idStr);
+
+            List<PartETag> partETagList;
+
+            // 2. 判断 ZSet 的元素数量与实际分片总数是否相同，相同则根据redis中的ETag顺序进行合并，不相同则向阿里云oss发送请求进行分片校验
+            Long redisETagCount = stringRedisTemplate.opsForZSet().size(chunkETagKey);
+            if (redisETagCount != null && redisETagCount.equals(Long.valueOf(chunkTotalSize))) {
+                Set<ZSetOperations.TypedTuple<String>> tuples =
+                        stringRedisTemplate.opsForZSet().rangeWithScores(chunkETagKey, 0, -1);
+                if (tuples == null || tuples.isEmpty()) {
+                    throw new BusinessException("分片信息不存在");
+                }
+                // 正确转换为可变列表并排序
+                partETagList = tuples.stream()
+                        .map(tuple -> {
+                            Double score = tuple.getScore();
+                            if (score == null) {
+                                log.warn("分片score为null, ETag: {}", tuple.getValue());
+                                return null;
+                            }
+                            return new PartETag(score.intValue(), tuple.getValue());
+                        })
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparing(PartETag::getPartNumber))
+                        .collect(Collectors.toList());
+
+                if (partETagList.size() != chunkTotalSize) {
+                    log.warn("Redis中的ETag数量({})与总分片数({})不一致", partETagList.size(), chunkTotalSize);
+                    // 回退到OSS查询
+                    partETagList = getPartETagList(uploadId, fileKey);
+                }
+            } else {
+                // 从阿里云OSS获取PartETag列表
+                partETagList = getPartETagList(uploadId, fileKey);
+            }
+
+            if (partETagList.size() != chunkTotalSize) {
+                // 获取缺失的分片索引
+                List<Integer> missingChunkIndexes = getMissingChunkIndexes(partETagList, chunkTotalSize);
+                log.info("分片数量不一致，已上传: {}，需要: {}，缺失分片: {}",
+                        partETagList.size(), chunkTotalSize, missingChunkIndexes);
+                return new UploadCompleteVO(true, missingChunkIndexes, null);
+            }
 
             // 3. 执行 OSS 分片合并
             CompleteMultipartUploadRequest completeRequest =
                     new CompleteMultipartUploadRequest(ossConfig.getBucketName(),
                             fileKey, uploadId, partETagList);
 
-            // 完成分片上传（合并分片）
             CompleteMultipartUploadResult result;
             try {
                 result = ossClient.completeMultipartUpload(completeRequest);
@@ -335,13 +349,8 @@ public class FileServiceImpl implements FileService {
             // 获取上传成功后的阿里云OSS文件地址
             String location = result.getLocation();
 
-            // 4. 更新数据库记录
-            // 更新文件OSS路径
-            fileUploadMapper.updateOSSLocation(id, location);
-
-            // 更新数据库该文件上传状态为上传完成
-            // TODO：可能出现数据库更新失败，状态不一致（OSS 文件已经在，但 DB 状态没更新）
-            fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.COMPLETED.getStatus());
+            // 4. 更新数据库记录，更新文件OSS路径和上传状态为上传完成
+            fileUploadMapper.updateFileLocationAndStatus(id, location, UploadStatusEnum.COMPLETED.getStatus());
 
             // 5. 删除 Redis 分片相关的缓存（批量删除）
             List<String> keysToDelete = new ArrayList<>();
@@ -353,7 +362,8 @@ public class FileServiceImpl implements FileService {
             stringRedisTemplate.delete(keysToDelete);
 
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
-            // TODO：合并完成后需要根据 location 地址下载文件并发送 mq 消息进行文件的向量化处理
+
+            // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
             FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage.builder().location(location).build();
             eventPublisher.publish(fileVectorizeEvent.topic(), fileVectorizeEvent.buildEventMessage(fileVectorizeMessage));
 
@@ -398,6 +408,28 @@ public class FileServiceImpl implements FileService {
         return new UploadProgressVO(uploadedParts);
     }
 
+    /**
+     * 获取缺失的分片ETag索引列表
+     */
+    private List<Integer> getMissingChunkIndexes(List<PartETag> uploadedParts, int totalChunks) {
+        // 获取已上传的分片编号集合
+        Set<Integer> uploadedPartNumbers = uploadedParts.stream()
+                .map(PartETag::getPartNumber)
+                .collect(Collectors.toSet());
+
+        // 找出缺失的分片索引
+        List<Integer> missingIndexes = new ArrayList<>();
+        for (int i = 1; i <= totalChunks; i++) {
+            if (!uploadedPartNumbers.contains(i)) {
+                missingIndexes.add(i);
+            }
+        }
+        return missingIndexes;
+    }
+
+    /**
+     *  从阿里云OSS获取分片ETag列表
+     */
     public List<PartETag> getPartETagList(String uploadId, String fileKey) {
         if (uploadId == null || uploadId.trim().isEmpty()) {
             log.warn("getPartETagList 调用失败：uploadId 不能为空");

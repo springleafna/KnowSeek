@@ -44,6 +44,12 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updateFileLocationAndStatus">
+        UPDATE tb_file_upload
+        SET location = #{location}, status = #{status}, merged_at = NOW()
+        WHERE id = #{id}
+    </update>
+
     <!-- 根据 MD5 和用户 ID 查询文件详情 -->
     <select id="findByMd5AndUserId" resultType="com.springleaf.knowseek.model.entity.FileUpload">
         SELECT *

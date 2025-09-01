@@ -18,7 +18,7 @@ public class RedisKeyConstant {
     public static String FILE_CHUNK_STATUS_KEY = "knowseek:upload_chunk:status:%s";
 
     /**
-     * 分片 ETag 有序列表 List：upload_chunk_eTag_{uploadId}
+     * 分片 ETag 有序集合 ZSet：upload_chunk_eTag_{uploadId}
      */
     public static String FILE_CHUNK_ETAG_KEY = "knowseek:upload_chunk:eTag:%s";
 }

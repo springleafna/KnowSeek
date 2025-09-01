@@ -11,7 +11,7 @@ CREATE TABLE tb_user (
     deleted TINYINT(1) NOT NULL DEFAULT '0' COMMENT '删除标志（0正常 1删除）'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
-CREATE TABLE file_upload (
+CREATE TABLE tb_file_upload (
     id           BIGINT           NOT NULL AUTO_INCREMENT COMMENT '主键',
     file_md5     VARCHAR(32)      NOT NULL COMMENT '文件 MD5',
     file_name    VARCHAR(255)     NOT NULL COMMENT '文件名称',
@@ -27,7 +27,7 @@ CREATE TABLE file_upload (
     UNIQUE KEY uk_md5_user (file_md5, user_id),
     INDEX idx_user (user_id),
     INDEX idx_org_tag (org_tag)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件上传记录';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件上传记录表';
 
 CREATE TABLE tb_organization (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '组织唯一标识',
@@ -46,4 +46,12 @@ CREATE TABLE tb_user_organization (
     organization_id BIGINT NOT NULL COMMENT '组织id',
 
     PRIMARY KEY (user_id, organization_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户组织关联表';
+
+CREATE TABLE tb_vector_chunk (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    file_md5 CHAR(32) NOT NULL COMMENT '文件 MD5（文件指纹）',
+    chunk_id INT NOT NULL COMMENT '文本分块序号',
+    text_content LONGTEXT COMMENT '原始文本内容（压缩存储）',
+    model_version VARCHAR(32) DEFAULT 'text-embedding-v4' COMMENT '向量模型'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='向量分片表';

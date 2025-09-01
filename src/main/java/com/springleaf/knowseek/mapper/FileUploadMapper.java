@@ -31,5 +31,10 @@ public interface FileUploadMapper {
      * 根据 MD5 和用户 ID 查询文件详情
      */
     FileUpload findByMd5AndUserId(@Param("fileMd5") String fileMd5, @Param("userId") Long userId);
+
+    /**
+     * 更新文件的 OSS 地址和状态
+     */
+    void updateFileLocationAndStatus(long id, String location, int status);
 }
 
