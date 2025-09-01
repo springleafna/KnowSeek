@@ -10,29 +10,30 @@ import java.util.List;
 @Slf4j
 @Service
 public class EmbeddingService {
+
     private final EmbeddingModel embeddingModel;
     private static final long RATE_LIMIT_DELAY_MS = 3500; // 每3.5秒调用一次，确保不超过1800RPM
+    private static final int MAX_BATCH_SIZE = 25; // 阿里云 DashScope 的批处理限制
 
     public EmbeddingService(EmbeddingModel embeddingModel) {
         this.embeddingModel = embeddingModel;
     }
 
     public List<List<Double>> embedTexts(List<String> texts) {
-        final int BATCH_SIZE = 25; // 阿里云 DashScope 的批处理限制
         List<List<Double>> allEmbeddings = new ArrayList<>();
         
-        log.info("开始向量化处理，共 {} 个文本，将分 {} 批处理", texts.size(), (texts.size() + BATCH_SIZE - 1) / BATCH_SIZE);
+        log.info("开始向量化处理，共 {} 个文本，将分 {} 批处理", texts.size(), (texts.size() + MAX_BATCH_SIZE - 1) / MAX_BATCH_SIZE);
         
         // 分批处理文本
-        for (int i = 0; i < texts.size(); i += BATCH_SIZE) {
-            int endIndex = Math.min(i + BATCH_SIZE, texts.size());
+        for (int i = 0; i < texts.size(); i += MAX_BATCH_SIZE) {
+            int endIndex = Math.min(i + MAX_BATCH_SIZE, texts.size());
             List<String> batch = texts.subList(i, endIndex);
             
             // 限流：除第一批外，每批之间等待
             if (i > 0) {
                 try {
                     log.info("限流等待 {} 毫秒后处理第 {} 批（共 {} 个文本）", 
-                            RATE_LIMIT_DELAY_MS, (i / BATCH_SIZE) + 1, batch.size());
+                            RATE_LIMIT_DELAY_MS, (i / MAX_BATCH_SIZE) + 1, batch.size());
                     Thread.sleep(RATE_LIMIT_DELAY_MS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -54,10 +55,10 @@ public class EmbeddingService {
                         }
                         return doubleList;
                     })
-                    .collect(java.util.stream.Collectors.toList());
+                    .toList();
             
             allEmbeddings.addAll(batchDoubleEmbeddings);
-            log.info("第 {} 批处理完成，已生成 {} 个向量", (i / BATCH_SIZE) + 1, allEmbeddings.size());
+            log.info("第 {} 批处理完成，已生成 {} 个向量", (i / MAX_BATCH_SIZE) + 1, allEmbeddings.size());
         }
         
         log.info("所有文本向量化完成，共生成 {} 个向量", allEmbeddings.size());

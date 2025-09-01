@@ -6,13 +6,13 @@ import com.springleaf.knowseek.mq.event.BaseEvent;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
 import com.springleaf.knowseek.service.impl.EmbeddingService;
 import com.springleaf.knowseek.service.impl.EsStorageService;
+import com.springleaf.knowseek.utils.FileUtil;
 import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +28,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
  * 文件上传阿里云OSS后进行文件向量化处理的消费者
@@ -66,7 +65,7 @@ public class FileVectorizeConsumer {
 
             FileVectorizeEvent.FileVectorizeMessage messageData = eventMessage.getData();
             String location = messageData.getLocation();
-            String fileName = extractFileNameFromUrl(location);
+            String fileName = FileUtil.extractFileNameFromUrl(location);
             
             log.info("开始流式处理文件向量化，文件地址: {}", location);
             
@@ -263,15 +262,13 @@ public class FileVectorizeConsumer {
                         vectorQueue.offer(new ChunkWithVector("ERROR", null)); // 错误信号
                         break;
                     }
-                    
-                    if (chunk != null) {
-                        batch.add(chunk);
-                        
-                        // 批量处理
-                        if (batch.size() >= BATCH_PROCESS_SIZE) {
-                            processBatch(batch, vectorQueue);
-                            batch.clear();
-                        }
+
+                    batch.add(chunk);
+
+                    // 批量处理
+                    if (batch.size() >= BATCH_PROCESS_SIZE) {
+                        processBatch(batch, vectorQueue);
+                        batch.clear();
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -302,6 +299,7 @@ public class FileVectorizeConsumer {
             throw new RuntimeException("批次向量化失败", e);
         }
     }
+
     /**
      * 异步批量存储到ES
      */
@@ -320,7 +318,7 @@ public class FileVectorizeConsumer {
                         break;
                     }
                     
-                    if (item != null && "EOF".equals(item.getChunk())) {
+                    if ("EOF".equals(item.chunk())) {
                         // 处理最后一批
                         if (!chunkBatch.isEmpty()) {
                             esStorageService.saveChunks(fileName, fileLocation, chunkBatch, vectorBatch);
@@ -329,14 +327,14 @@ public class FileVectorizeConsumer {
                         break;
                     }
                     
-                    if (item != null && "ERROR".equals(item.getChunk())) {
+                    if ("ERROR".equals(item.chunk())) {
                         log.error("在存储阶段接收到错误信号");
                         break;
                     }
                     
-                    if (item != null && item.getVector() != null) {
-                        chunkBatch.add(item.getChunk());
-                        vectorBatch.add(item.getVector());
+                    if (item.vector() != null) {
+                        chunkBatch.add(item.chunk());
+                        vectorBatch.add(item.vector());
                         
                         // 批量存储
                         if (chunkBatch.size() >= BATCH_PROCESS_SIZE) {
@@ -376,26 +374,9 @@ public class FileVectorizeConsumer {
         log.info("FileVectorizeConsumer资源清理完成");
     }
 
-    /**
-     * 从URL中提取文件名
-     */
-    private String extractFileNameFromUrl(String url) {
-        try {
-            String[] parts = url.split("/");
-            return parts[parts.length - 1];
-        } catch (Exception e) {
-            log.warn("无法从URL提取文件名: {}", url);
-            return "unknown_file";
-        }
-    }
-
-    /**
-     * 文本块和向量的包装类
-     */
-    @Getter
-    @AllArgsConstructor
-    private static class ChunkWithVector {
-        private final String chunk;
-        private final List<Double> vector;
+        /**
+         * 文本块和向量的包装类
+         */
+        private record ChunkWithVector(String chunk, List<Double> vector) {
     }
 }

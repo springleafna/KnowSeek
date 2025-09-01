@@ -1,5 +1,7 @@
 package com.springleaf.knowseek.utils;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -7,7 +9,59 @@ import java.util.Set;
 /**
  * 文件类型判断工具类
  */
+@Slf4j
 public class FileUtil {
+
+    /**
+     * 根据文件名获取文件扩展名 .xxx
+     */
+    public static String getFileExtension(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "";
+        }
+
+        int lastDotIndex = fileName.lastIndexOf('.');
+        int lastSeparatorIndex = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf('\\'));
+
+        // 确保点号在最后一个路径分隔符之后（处理类似 "path/to.file/name" 的情况）
+        if (lastDotIndex > lastSeparatorIndex && lastDotIndex < fileName.length() - 1) {
+            return fileName.substring(lastDotIndex).toLowerCase();
+        }
+
+        return "";
+    }
+
+    /**
+     * 提取文件扩展名
+     *
+     * @param fileName 文件名
+     * @return 小写的文件扩展名，如果没有扩展名则返回null
+     */
+    public static String extractFileExtension(String fileName) {
+        if (fileName == null || fileName.trim().isEmpty()) {
+            return null;
+        }
+
+        int lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == fileName.length() - 1) {
+            return null;
+        }
+
+        return fileName.substring(lastDotIndex + 1).toLowerCase();
+    }
+
+    /**
+     * 从URL中提取文件名
+     */
+    public static String extractFileNameFromUrl(String url) {
+        try {
+            String[] parts = url.split("/");
+            return parts[parts.length - 1];
+        } catch (Exception e) {
+            log.warn("无法从URL提取文件名: {}", url);
+            return "unknown_file";
+        }
+    }
 
     /**
      * 根据文件扩展名获取文件类型描述

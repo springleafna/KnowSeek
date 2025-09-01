@@ -22,6 +22,7 @@ import com.springleaf.knowseek.model.vo.UploadProgressVO;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
 import com.springleaf.knowseek.mq.producer.EventPublisher;
 import com.springleaf.knowseek.service.FileService;
+import com.springleaf.knowseek.utils.FileUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -124,7 +125,7 @@ public class FileServiceImpl implements FileService {
         String fileMd5 = dto.getFileMd5();
         Long fileSize = dto.getFileSize();  //文件大小
         Integer chunkTotal = dto.getChunkTotal();   // 分片总数
-        String extension = getFileExtension(fileName);  // 获取文件扩展名：.xxx
+        String extension = FileUtil.getFileExtension(fileName);  // 获取文件扩展名：.xxx
         // URL 过期时间配置化
         long expireSeconds = ossConfig.getPresignedUrlExpiration();
         Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
@@ -132,7 +133,6 @@ public class FileServiceImpl implements FileService {
 
         try {
             // 根据文件Md5值和用户ID判断文件是否以及被上传成功（秒传逻辑）
-            // TODO：先从Redis中获取
             // TODO：需要考虑存在但未上传成功的情况，由于md5唯一约束会导致插入出错
             FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId);
             if (fileUpload != null && fileUpload.getStatus().equals(UploadStatusEnum.COMPLETED.getStatus())) {
@@ -150,7 +150,6 @@ public class FileServiceImpl implements FileService {
                 return new UploadInitVO(true, null, null, null);
             }
 
-            // TODO：最好先保存上传信息到数据库再调用OSS初始化，防止数据库插入失败，uploadId 已在 OSS 存在，但无记录 → 成为“孤儿上传任务”。
             // TODO：启动定时任务扫描数据库和Redis并中止“超时未完成”的 uploadId
             // TODO：未处理 OSS 异常重试机制，ossClient.initiateMultipartUpload() 可能因网络抖动失败。
             // 设置文件上传路径
@@ -449,12 +448,12 @@ public class FileServiceImpl implements FileService {
             );
 
             PartListing partListing = ossClient.listParts(listPartsRequest);
+            // TODO：更新 Redis 的分片ETag列表
 
             // 将 Part 列表转换为 PartETag 列表
             return partListing.getParts().stream()
                     .map(part -> new PartETag(part.getPartNumber(), part.getETag()))
                     .collect(Collectors.toList());
-
         } catch (OSSException e) {
             // OSS 服务端异常：如 NoSuchUpload, AccessDenied, NoSuchBucket 等
             log.error("OSS服务端错误 - ListParts 失败。Bucket: {}, fileKey: {}, uploadId: {}, ErrorCode: {}, Message: {}, RequestId: {}",
@@ -481,7 +480,7 @@ public class FileServiceImpl implements FileService {
         }
 
         // 提取文件扩展名
-        String extension = extractFileExtension(fileName);
+        String extension = FileUtil.extractFileExtension(fileName);
         if (extension == null) {
             log.warn("无法提取文件扩展名: fileName={}", fileName);
             throw new BusinessException("文件必须有扩展名");
@@ -511,25 +510,6 @@ public class FileServiceImpl implements FileService {
         log.warn("文件类型验证失败: fileName={}, extension={}, fileType={}, reason=unknown_type",
                 fileName, extension, fileType);
         throw new BusinessException(message);
-    }
-
-    /**
-     * 提取文件扩展名
-     *
-     * @param fileName 文件名
-     * @return 小写的文件扩展名，如果没有扩展名则返回null
-     */
-    private String extractFileExtension(String fileName) {
-        if (fileName == null || fileName.trim().isEmpty()) {
-            return null;
-        }
-
-        int lastDotIndex = fileName.lastIndexOf('.');
-        if (lastDotIndex == -1 || lastDotIndex == fileName.length() - 1) {
-            return null;
-        }
-
-        return fileName.substring(lastDotIndex + 1).toLowerCase();
     }
 
     /**
@@ -734,24 +714,5 @@ public class FileServiceImpl implements FileService {
             default:
                 return extension.toUpperCase() + "文件";
         }
-    }
-
-    /**
-     * 根据文件名获取文件扩展名 .xxx
-     */
-    public static String getFileExtension(String fileName) {
-        if (fileName == null || fileName.isEmpty()) {
-            return "";
-        }
-
-        int lastDotIndex = fileName.lastIndexOf('.');
-        int lastSeparatorIndex = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf('\\'));
-
-        // 确保点号在最后一个路径分隔符之后（处理类似 "path/to.file/name" 的情况）
-        if (lastDotIndex > lastSeparatorIndex && lastDotIndex < fileName.length() - 1) {
-            return fileName.substring(lastDotIndex).toLowerCase();
-        }
-
-        return "";
     }
 }
