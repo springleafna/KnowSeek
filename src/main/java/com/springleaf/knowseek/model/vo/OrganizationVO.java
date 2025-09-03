@@ -11,7 +11,7 @@ public class OrganizationVO {
     /**
      * 用户组织标签
      */
-    private String orgTag;
+    private String tag;
     
     /**
      * 组织名称
