@@ -2,6 +2,7 @@ package com.springleaf.knowseek.service.impl;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -11,12 +12,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class EsStorageService {
-    private final ElasticsearchClient esClient;
 
-    public EsStorageService(ElasticsearchClient esClient) {
-        this.esClient = esClient;
-    }
+    private final ElasticsearchClient esClient;
 
     public void saveChunks(String fileName, String fileLocation, List<String> chunks, List<float[]> vectors) throws IOException {
         for (int i = 0; i < chunks.size(); i++) {

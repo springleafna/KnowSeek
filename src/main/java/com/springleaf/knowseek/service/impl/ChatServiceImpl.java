@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.springleaf.knowseek.constans.ChatRedisKeyConstant;
 import com.springleaf.knowseek.model.dto.ChatRequestDTO;
 import com.springleaf.knowseek.model.dto.CreateConversationDTO;
 import com.springleaf.knowseek.model.vo.ChatResponseVO;
@@ -36,11 +37,9 @@ import java.util.concurrent.TimeUnit;
 public class ChatServiceImpl implements ChatService {
 
     private final DashScopeChatModel chatModel;
+
     private final StringRedisTemplate stringRedisTemplate;
 
-    private static final String CONVERSATION_KEY_PREFIX = "conversation:user:";
-    private static final String CONVERSATION_META_KEY_PREFIX = "conversation:meta:user:";
-    private static final String USER_CONVERSATIONS_KEY_PREFIX = "user:conversations:";
     private static final long CONVERSATION_EXPIRE_HOURS = 24;
 
     @Override
@@ -131,7 +130,7 @@ public class ChatServiceImpl implements ChatService {
             long userId = StpUtil.getLoginIdAsLong();
             
             // 删除会话数据但保留会话元数据（只清空消息，不删除会话）
-            String conversationKey = CONVERSATION_KEY_PREFIX + userId + ":" + conversationId;
+            String conversationKey = String.format(ChatRedisKeyConstant.CONVERSATION_KEY_PREFIX, userId, conversationId);
             stringRedisTemplate.delete(conversationKey);
             
             // 更新会话元数据，重置消息计数
@@ -141,7 +140,7 @@ public class ChatServiceImpl implements ChatService {
                 conversation.setLastMessage(null);
                 conversation.setLastMessageTime(null);
                 
-                String metaKey = CONVERSATION_META_KEY_PREFIX + userId + ":" + conversationId;
+                String metaKey = String.format(ChatRedisKeyConstant.CONVERSATION_META_KEY_PREFIX, userId, conversationId);
                 String metaJson = JSON.toJSONString(conversation);
                 stringRedisTemplate.opsForValue().set(metaKey, metaJson, CONVERSATION_EXPIRE_HOURS, TimeUnit.HOURS);
             }
@@ -153,7 +152,7 @@ public class ChatServiceImpl implements ChatService {
             return new ArrayList<>();
         }
 
-        String key = CONVERSATION_KEY_PREFIX + userId + ":" + conversationId;
+        String key = String.format(ChatRedisKeyConstant.CONVERSATION_KEY_PREFIX, userId, conversationId);
         String historyJson = stringRedisTemplate.opsForValue().get(key);
 
         if (historyJson == null) {
@@ -192,7 +191,7 @@ public class ChatServiceImpl implements ChatService {
         }
 
         try {
-            String key = CONVERSATION_KEY_PREFIX + userId + ":" + conversationId;
+            String key = String.format(ChatRedisKeyConstant.CONVERSATION_KEY_PREFIX, userId, conversationId);
             // 使用 fastjson2 将 Message 列表序列化为 JSON 字符串，自动包含类型信息
             String messagesJson = JSON.toJSONString(messages);
 
@@ -216,8 +215,8 @@ public class ChatServiceImpl implements ChatService {
     
     private void saveOrUpdateConversationMetadata(long userId, String conversationId, List<Message> messages) {
         try {
-            String metaKey = CONVERSATION_META_KEY_PREFIX + userId + ":" + conversationId;
-            String userConversationsKey = USER_CONVERSATIONS_KEY_PREFIX + userId;
+            String metaKey = String.format(ChatRedisKeyConstant.CONVERSATION_META_KEY_PREFIX, userId, conversationId);
+            String userConversationsKey = String.format(ChatRedisKeyConstant.USER_CONVERSATIONS_KEY_PREFIX, userId);
             
             // 创建或更新会话元数据
             ConversationVO conversationVO = new ConversationVO();
@@ -275,7 +274,7 @@ public class ChatServiceImpl implements ChatService {
     public List<ConversationVO> getUserConversations() {
         try {
             long userId = StpUtil.getLoginIdAsLong();
-            String userConversationsKey = USER_CONVERSATIONS_KEY_PREFIX + userId;
+            String userConversationsKey = String.format(ChatRedisKeyConstant.USER_CONVERSATIONS_KEY_PREFIX, userId);
             
             Set<String> conversationIds = stringRedisTemplate.opsForSet().members(userConversationsKey);
             if (conversationIds == null || conversationIds.isEmpty()) {
@@ -318,12 +317,12 @@ public class ChatServiceImpl implements ChatService {
             conversationVO.setMessageCount(0);
             
             // 保存会话元数据
-            String metaKey = CONVERSATION_META_KEY_PREFIX + userId + ":" + conversationId;
+            String metaKey = String.format(ChatRedisKeyConstant.CONVERSATION_META_KEY_PREFIX, userId, conversationId);
             String metaJson = JSON.toJSONString(conversationVO);
             stringRedisTemplate.opsForValue().set(metaKey, metaJson, CONVERSATION_EXPIRE_HOURS, TimeUnit.HOURS);
             
             // 添加到用户会话列表
-            String userConversationsKey = USER_CONVERSATIONS_KEY_PREFIX + userId;
+            String userConversationsKey = String.format(ChatRedisKeyConstant.USER_CONVERSATIONS_KEY_PREFIX, userId);
             stringRedisTemplate.opsForSet().add(userConversationsKey, conversationId);
             stringRedisTemplate.expire(userConversationsKey, CONVERSATION_EXPIRE_HOURS, TimeUnit.HOURS);
             
@@ -340,15 +339,15 @@ public class ChatServiceImpl implements ChatService {
             long userId = StpUtil.getLoginIdAsLong();
             
             // 删除会话数据
-            String conversationKey = CONVERSATION_KEY_PREFIX + userId + ":" + conversationId;
+            String conversationKey = String.format(ChatRedisKeyConstant.CONVERSATION_KEY_PREFIX, userId, conversationId);
             stringRedisTemplate.delete(conversationKey);
             
             // 删除会话元数据
-            String metaKey = CONVERSATION_META_KEY_PREFIX + userId + ":" + conversationId;
+            String metaKey = String.format(ChatRedisKeyConstant.CONVERSATION_META_KEY_PREFIX, userId, conversationId);
             stringRedisTemplate.delete(metaKey);
             
             // 从用户会话列表中移除
-            String userConversationsKey = USER_CONVERSATIONS_KEY_PREFIX + userId;
+            String userConversationsKey = String.format(ChatRedisKeyConstant.USER_CONVERSATIONS_KEY_PREFIX, userId);
             stringRedisTemplate.opsForSet().remove(userConversationsKey, conversationId);
             
         } catch (Exception e) {
@@ -370,7 +369,7 @@ public class ChatServiceImpl implements ChatService {
     
     private ConversationVO getConversationMeta(long userId, String conversationId) {
         try {
-            String metaKey = CONVERSATION_META_KEY_PREFIX + userId + ":" + conversationId;
+            String metaKey = String.format(ChatRedisKeyConstant.CONVERSATION_META_KEY_PREFIX, userId, conversationId);
             String metaJson = stringRedisTemplate.opsForValue().get(metaKey);
             
             if (metaJson != null) {

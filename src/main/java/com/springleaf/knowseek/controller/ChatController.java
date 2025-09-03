@@ -7,6 +7,8 @@ import com.springleaf.knowseek.model.dto.CreateConversationDTO;
 import com.springleaf.knowseek.model.vo.ChatResponseVO;
 import com.springleaf.knowseek.model.vo.ConversationVO;
 import com.springleaf.knowseek.service.ChatService;
+import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -19,13 +21,13 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/chat")
 @Validated
 @SaCheckLogin
+@RequiredArgsConstructor
 public class ChatController {
 
-    @Autowired
-    private ChatService chatService;
+    private final ChatService chatService;
 
     @PostMapping("/send")
     public Result<ChatResponseVO> chat(@Valid @RequestBody ChatRequestDTO requestDTO) {

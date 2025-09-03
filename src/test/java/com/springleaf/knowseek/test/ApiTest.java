@@ -6,7 +6,7 @@ import com.aliyun.oss.common.auth.EnvironmentVariableCredentialsProvider;
 import com.aliyun.oss.common.comm.SignVersion;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
-import com.springleaf.knowseek.constans.RedisKeyConstant;
+import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +49,7 @@ public class ApiTest {
 
     @Test
     public void test_redisKey() {
-        String formatted = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, "123");
+        String formatted = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, "123");
         System.out.println(formatted);
     }
 

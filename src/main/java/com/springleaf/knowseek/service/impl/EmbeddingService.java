@@ -1,5 +1,6 @@
 package com.springleaf.knowseek.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
@@ -9,15 +10,12 @@ import java.util.List;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class EmbeddingService {
 
     private final EmbeddingModel embeddingModel;
     private static final long RATE_LIMIT_DELAY_MS = 3500; // 每3.5秒调用一次，确保不超过1800RPM
     private static final int MAX_BATCH_SIZE = 25; // 阿里云 DashScope 的批处理限制
-
-    public EmbeddingService(EmbeddingModel embeddingModel) {
-        this.embeddingModel = embeddingModel;
-    }
 
     public List<float[]> embedTexts(List<String> texts) {
         List<float[]> allEmbeddings = new ArrayList<>();

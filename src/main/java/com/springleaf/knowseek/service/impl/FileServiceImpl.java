@@ -8,7 +8,7 @@ import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.*;
 import com.springleaf.knowseek.config.OssConfig;
 import com.springleaf.knowseek.constans.OssUserFileKeyConstant;
-import com.springleaf.knowseek.constans.RedisKeyConstant;
+import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.FileUploadMapper;
@@ -205,7 +205,7 @@ public class FileServiceImpl implements FileService {
             log.info("文件上传信息已保存到数据库，上传状态设置为上传中");
 
             // 将文件上传信息存入Redis
-            String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
+            String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
             Map<String, String> redisValue = new HashMap<>();
             redisValue.put("id", String.valueOf(fileUpload.getId()));
             redisValue.put("fileName", fileName);
@@ -235,10 +235,10 @@ public class FileServiceImpl implements FileService {
             Long chunkSize = fileUploadChunkDTO.getChunkSize();
 
             // Redis Key
-            String chunkInfoKey = String.format(RedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, chunkIndex);
-            String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
-            String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
-            String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
+            String chunkInfoKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, chunkIndex);
+            String chunkStatusKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+            String chunkETagKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+            String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             // 保存分片信息
@@ -276,9 +276,9 @@ public class FileServiceImpl implements FileService {
             String uploadId = fileUploadCompleteDTO.getUploadId();
             Integer chunkTotalSize = fileUploadCompleteDTO.getChunkTotalSize();
 
-            String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
-            String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
-            String fileUploadInfoKey = String.format(RedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
+            String chunkStatusKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+            String chunkETagKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+            String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
             // 1. 获取文件信息
             String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
@@ -354,7 +354,7 @@ public class FileServiceImpl implements FileService {
             // 5. 删除 Redis 分片相关的缓存（批量删除）
             List<String> keysToDelete = new ArrayList<>();
             for (int i = 1; i <= chunkTotalSize; i++) {
-                keysToDelete.add(String.format(RedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, i));
+                keysToDelete.add(String.format(UploadRedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, i));
             }
             keysToDelete.add(chunkStatusKey);
             keysToDelete.add(chunkETagKey);
@@ -375,8 +375,8 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public UploadProgressVO getUploadProgress(String uploadId, String fileKey) {
-        String chunkStatusKey = String.format(RedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
-        String chunkETagKey = String.format(RedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+        String chunkStatusKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+        String chunkETagKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
 
         // 先从 Redis 中判断分片是否全部上传
 
