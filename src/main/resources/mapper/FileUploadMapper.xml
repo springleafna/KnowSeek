@@ -57,5 +57,8 @@
         WHERE file_md5 = #{fileMd5}
           AND user_id = #{userId}
     </select>
+    <select id="selectByUserId" resultType="com.springleaf.knowseek.model.entity.FileUpload">
+
+    </select>
 
 </mapper>

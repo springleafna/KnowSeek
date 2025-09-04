@@ -16,6 +16,7 @@ import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
 import com.springleaf.knowseek.model.entity.FileUpload;
+import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.model.vo.UploadProgressVO;

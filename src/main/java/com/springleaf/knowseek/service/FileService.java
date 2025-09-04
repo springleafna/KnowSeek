@@ -3,14 +3,15 @@ package com.springleaf.knowseek.service;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
+import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.model.vo.UploadProgressVO;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface FileService {
-
 
     /**
      * 分片文件上传
@@ -31,4 +32,5 @@ public interface FileService {
      * 获取上传进度
      */
     UploadProgressVO getUploadProgress(String uploadId, String fileKey);
+
 }

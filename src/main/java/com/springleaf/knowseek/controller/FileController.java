@@ -13,8 +13,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-
 @RestController
 @RequestMapping("/file")
 @RequiredArgsConstructor
@@ -66,7 +64,7 @@ public class FileController {
     }
 
     /**
-     * 取消上上传
+     * 取消上传
      */
     @PostMapping("/cancel")
     public Result<?> cancelUpload(@RequestBody FileUploadPauseDTO fileUploadPauseDTO) {
