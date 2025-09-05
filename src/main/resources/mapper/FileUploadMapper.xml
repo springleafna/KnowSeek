@@ -51,14 +51,15 @@
     </update>
 
     <!-- 根据 MD5 和用户 ID 查询文件详情 -->
-    <select id="findByMd5AndUserId" resultType="com.springleaf.knowseek.model.entity.FileUpload">
+    <select id="findByMd5AndUserId" resultMap="resultMap">
         SELECT *
         FROM tb_file_upload
         WHERE file_md5 = #{fileMd5}
           AND user_id = #{userId}
     </select>
-    <select id="selectByUserId" resultType="com.springleaf.knowseek.model.entity.FileUpload">
 
+    <select id="selectByUserId" resultMap="resultMap">
+        SELECT * FROM tb_file_upload WHERE user_id = #{userId}
     </select>
 
 </mapper>

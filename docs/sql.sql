@@ -1,23 +1,34 @@
 CREATE DATABASE know_seek if not exists;
 
 CREATE TABLE tb_user (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户唯一标识',
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户ID',
     username VARCHAR(255) NOT NULL UNIQUE COMMENT '用户名，唯一',
     password VARCHAR(255) NOT NULL COMMENT '加密后的密码',
     role ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER' COMMENT '用户角色',
     primary_org_id BIGINT DEFAULT NULL COMMENT '用户主组织ID',
+    primary_knowledge_base_id BIGINT DEFAULT NULL COMMENT '用户主知识库ID',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted TINYINT(1) NOT NULL DEFAULT '0' COMMENT '删除标志（0正常 1删除）'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
+CREATE TABLE tb_knowledge_base (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '知识库ID',
+    name VARCHAR(255) NOT NULL COMMENT '知识库名称',
+    user_id BIGINT NOT NULL COMMENT '用户id',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted TINYINT(1) NOT NULL DEFAULT '0' COMMENT '删除标志（0正常 1删除）'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库表';
+
 CREATE TABLE tb_file_upload (
-    id           BIGINT           NOT NULL AUTO_INCREMENT COMMENT '主键',
+    id           BIGINT           NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     file_md5     VARCHAR(32)      NOT NULL COMMENT '文件 MD5',
     file_name    VARCHAR(255)     NOT NULL COMMENT '文件名称',
     total_size   BIGINT           NOT NULL COMMENT '文件大小',
     status       TINYINT          NOT NULL DEFAULT 0 COMMENT '上传状态，0-已上传，1-上传中，2-上传失败',
     user_id      BIGINT           NOT NULL COMMENT '用户 ID',
+    knowledge_base_id BIGINT NOT NULL COMMENT '知识库ID',
     org_tag      VARCHAR(50)      DEFAULT NULL COMMENT '组织标签',
     is_public    BOOLEAN          NOT NULL DEFAULT FALSE COMMENT '是否公开',
     created_at   TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -30,7 +41,7 @@ CREATE TABLE tb_file_upload (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件上传记录表';
 
 CREATE TABLE tb_organization (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '组织唯一标识',
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '组织ID',
     tag VARCHAR(50) UNIQUE NOT NULL COMMENT '组织唯一标签名',
     name VARCHAR(100) NOT NULL COMMENT '组织名称',
     description TEXT DEFAULT NULL COMMENT '描述',
@@ -42,8 +53,8 @@ CREATE TABLE tb_organization (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='组织表';
 
 CREATE TABLE tb_user_organization (
-    user_id BIGINT NOT NULL COMMENT '用户id',
-    organization_id BIGINT NOT NULL COMMENT '组织id',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    organization_id BIGINT NOT NULL COMMENT '组织ID',
 
     PRIMARY KEY (user_id, organization_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户组织关联表';
