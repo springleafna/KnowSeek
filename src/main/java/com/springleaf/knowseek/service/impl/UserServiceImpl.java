@@ -3,9 +3,11 @@ package com.springleaf.knowseek.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.springleaf.knowseek.constans.DefaultKnowledgeBaseConstant;
 import com.springleaf.knowseek.constans.DefaultOrgConstant;
 import com.springleaf.knowseek.enums.UserRoleEnum;
 import com.springleaf.knowseek.exception.BusinessException;
+import com.springleaf.knowseek.mapper.KnowledgeBaseMapper;
 import com.springleaf.knowseek.mapper.OrganizationMapper;
 import com.springleaf.knowseek.mapper.UserMapper;
 import com.springleaf.knowseek.mapper.UserOrganizationMapper;
@@ -36,6 +38,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final OrganizationMapper organizationMapper;
     private final UserOrganizationMapper userOrganizationMapper;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
 
     @Override
     public UserLoginVO login(UserLoginDTO loginDTO) {
@@ -101,6 +104,10 @@ public class UserServiceImpl implements UserService {
 
         // 将创建的默认组织设置为用户的主组织
         userMapper.setPrimaryOrgId(newOrganizationId, newUserId);
+
+        // 创建一个用户默认的知识库
+        knowledgeBaseMapper.insertKnowledgeBase(DefaultKnowledgeBaseConstant.DEFAULT_NAME, newUserId);
+
         log.info("新用户注册成功");
     }
 

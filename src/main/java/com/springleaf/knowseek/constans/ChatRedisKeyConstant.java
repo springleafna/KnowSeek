@@ -3,7 +3,9 @@ package com.springleaf.knowseek.constans;
 /**
  * AI 对话相关 Redis Key
  */
-public class ChatRedisKeyConstant {
+public final class ChatRedisKeyConstant {
+
+    private ChatRedisKeyConstant() {}
 
     public static final String CONVERSATION_KEY_PREFIX = "conversation:user:%s:%s";
     public static final String CONVERSATION_META_KEY_PREFIX = "conversation:meta:user:%s:%s";

@@ -2,8 +2,13 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.mapper.FileUploadMapper;
+import com.springleaf.knowseek.mapper.KnowledgeBaseMapper;
+import com.springleaf.knowseek.model.dto.KnowledgeBaseCreateDTO;
+import com.springleaf.knowseek.model.dto.KnowledgeBaseUpdateDTO;
 import com.springleaf.knowseek.model.entity.FileUpload;
+import com.springleaf.knowseek.model.entity.KnowledgeBase;
 import com.springleaf.knowseek.model.vo.FileItemVO;
+import com.springleaf.knowseek.model.vo.KnowledgeBaseVO;
 import com.springleaf.knowseek.service.KnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +25,7 @@ import java.util.stream.Collectors;
 public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     private final FileUploadMapper fileUploadMapper;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
 
     @Override
     public List<FileItemVO> getFileList() {
@@ -37,4 +43,56 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 })
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public void createKnowledgeBase(KnowledgeBaseCreateDTO createDTO) {
+        long currentUserId = StpUtil.getLoginIdAsLong();
+        log.info("用户 [{}] 创建知识库，知识库名称: {}", currentUserId, createDTO.getName());
+        knowledgeBaseMapper.insertKnowledgeBase(createDTO.getName(), currentUserId);
+    }
+
+    @Override
+    public void deleteKnowledgeBase(Long id) {
+        // 这里可以加一步权限校验，确保只有知识库所有者能删除
+        knowledgeBaseMapper.deleteKnowledgeBaseById(id);
+    }
+
+    @Override
+    public List<KnowledgeBaseVO> listKnowledgeBasesByCurrentUser() {
+        long currentUserId = StpUtil.getLoginIdAsLong();
+
+        List<KnowledgeBase> entityList = knowledgeBaseMapper.selectAllKnowledgeBase(currentUserId);
+        if (entityList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return entityList.stream().map(entity -> {
+            KnowledgeBaseVO vo = new KnowledgeBaseVO();
+            BeanUtils.copyProperties(entity, vo); // 从 entity 复制属性到 vo
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public void updateKnowledgeBaseName(Long id, KnowledgeBaseUpdateDTO updateDTO) {
+        // 这里也可以加权限校验
+        knowledgeBaseMapper.updateKnowledgeBaseNameById(id, updateDTO.getName());
+    }
+
+    @Override
+    public KnowledgeBaseVO getKnowledgeBaseById(Long id) {
+        KnowledgeBase entity = knowledgeBaseMapper.selectKnowledgeBaseById(id);
+
+        if (entity == null) {
+            return null;
+        }
+
+        // 创建 VO 实例并使用 BeanUtils 复制属性
+        KnowledgeBaseVO vo = new KnowledgeBaseVO();
+        BeanUtils.copyProperties(entity, vo);
+
+        return vo;
+    }
+
+
 }

@@ -3,7 +3,9 @@ package com.springleaf.knowseek.constans;
 /**
  * 用户默认组织常量
  */
-public class DefaultOrgConstant {
+public final class DefaultOrgConstant {
+
+    private DefaultOrgConstant() {}
 
     /**
      * 用户默认组织标签名

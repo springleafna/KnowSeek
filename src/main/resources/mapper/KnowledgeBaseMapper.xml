@@ -14,9 +14,43 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, username, password, role, primary_org_id, created_at, updated_at, deleted
+        id, name, user_id, created_at, updated_at, deleted
     </sql>
 
+    <!-- 根据name、userId新增 -->
+    <insert id="insertKnowledgeBase" parameterType="com.springleaf.knowseek.model.entity.KnowledgeBase">
+        INSERT INTO tb_knowledge_base (name, user_id)
+        VALUES (#{name}, #{userId})
+    </insert>
 
+    <!-- 根据id删除 -->
+    <update id="deleteKnowledgeBaseById">
+        UPDATE tb_knowledge_base
+        SET deleted = 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- 获取全部未删除的list -->
+    <select id="selectAllKnowledgeBase" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM tb_knowledge_base
+        WHERE user_id = #{userId} AND deleted = 0
+    </select>
+
+    <!-- 根据id更新name（仅当未删除时） -->
+    <update id="updateKnowledgeBaseNameById" parameterType="com.springleaf.knowseek.model.entity.KnowledgeBase">
+        UPDATE tb_knowledge_base
+        SET name = #{name}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID获取知识库信息 -->
+    <select id="selectKnowledgeBaseById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM tb_knowledge_base
+        WHERE id = #{id} AND deleted = 0
+    </select>
 
 </mapper>

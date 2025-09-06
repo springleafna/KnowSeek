@@ -3,7 +3,9 @@ package com.springleaf.knowseek.constans;
 /**
  * 文件上传相关 Redis Key
  */
-public class UploadRedisKeyConstant {
+public final class UploadRedisKeyConstant {
+
+    private UploadRedisKeyConstant() {}
 
     /**
      * 文件上传信息 HASH：upload_file_info_{uploadId}

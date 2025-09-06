@@ -3,7 +3,9 @@ package com.springleaf.knowseek.constans;
 /**
  * 用户上传到OSS的文件路径地址常量
  */
-public class OssUserFileKeyConstant {
+public final class OssUserFileKeyConstant {
+
+    private OssUserFileKeyConstant() {}
 
     /**
      * 用户文件路径模板：uploads/{userId}/{timestamp}/{fileMd5}{extension}
