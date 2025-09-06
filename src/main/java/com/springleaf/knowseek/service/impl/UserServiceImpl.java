@@ -106,8 +106,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void logout() {
+        long userId = StpUtil.getLoginIdAsLong();
         StpUtil.logout();
-        log.info("用户 {} 退出登录", StpUtil.getLoginIdAsLong());
+        log.info("用户 {} 退出登录", userId);
     }
 
     @Override

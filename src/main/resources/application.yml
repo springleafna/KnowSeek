@@ -28,23 +28,24 @@ spring:
     topic:
       file-processing-vectorize: file.processing.vectorize
   ai:
-    dashscope:
+    # 使用 spring.ai.openai 的配置路径，因为灵码提供了 OpenAI 兼容接口
+    openai:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: sk-0393395839294d9491512a924a61d6b9
+
+      # 聊天模型的相关配置
       chat:
-        # 全局 API 配置
-        api-key: sk-0393395839294d9491512a924a61d6b9
-        base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-
-        # 嵌入模型配置
-        embedding:
-          model: text-embedding-v4
-          dimensions: 1024
-
-        # 聊天模型配置
-        chat:
+        options:
           model: qwen-plus
-          top_p: 0.8
           temperature: 0.7
+          top-p: 0.8
           # enable_search: true # 是否开启搜索功能
+
+      # 嵌入模型的相关配置
+      embedding:
+        options:
+          model: text-embedding-v2
+          dimensions: 1024
   elasticsearch:
     uris: 120.26.236.122:9200
 
