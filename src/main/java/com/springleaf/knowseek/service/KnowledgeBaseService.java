@@ -34,10 +34,9 @@ public interface KnowledgeBaseService {
 
     /**
      * 更新知识库名称
-     * @param id 知识库ID
      * @param updateDTO 包含新名称的DTO
      */
-    void updateKnowledgeBaseName(Long id, KnowledgeBaseUpdateDTO updateDTO);
+    void updateKnowledgeBaseName(KnowledgeBaseUpdateDTO updateDTO);
 
     /**
      * 根据ID获取知识库详情

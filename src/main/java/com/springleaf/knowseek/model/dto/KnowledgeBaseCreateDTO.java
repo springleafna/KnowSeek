@@ -8,4 +8,6 @@ public class KnowledgeBaseCreateDTO {
 
     @NotBlank(message = "知识库名称不能为空")
     private String name;
+
+    private String description;
 }

@@ -48,7 +48,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public void createKnowledgeBase(KnowledgeBaseCreateDTO createDTO) {
         long currentUserId = StpUtil.getLoginIdAsLong();
         log.info("用户 [{}] 创建知识库，知识库名称: {}", currentUserId, createDTO.getName());
-        knowledgeBaseMapper.insertKnowledgeBase(createDTO.getName(), currentUserId);
+        knowledgeBaseMapper.insertKnowledgeBase(createDTO.getName(), currentUserId, createDTO.getDescription());
     }
 
     @Override
@@ -68,15 +68,15 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         return entityList.stream().map(entity -> {
             KnowledgeBaseVO vo = new KnowledgeBaseVO();
-            BeanUtils.copyProperties(entity, vo); // 从 entity 复制属性到 vo
+            BeanUtils.copyProperties(entity, vo);
             return vo;
         }).collect(Collectors.toList());
     }
 
     @Override
-    public void updateKnowledgeBaseName(Long id, KnowledgeBaseUpdateDTO updateDTO) {
+    public void updateKnowledgeBaseName(KnowledgeBaseUpdateDTO updateDTO) {
         // 这里也可以加权限校验
-        knowledgeBaseMapper.updateKnowledgeBaseNameById(id, updateDTO.getName());
+        knowledgeBaseMapper.updateKnowledgeBaseNameById(updateDTO.getId(), updateDTO.getName(), updateDTO.getDescription());
     }
 
     @Override

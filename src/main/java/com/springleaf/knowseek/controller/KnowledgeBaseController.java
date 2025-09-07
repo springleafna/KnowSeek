@@ -57,9 +57,9 @@ public class KnowledgeBaseController {
     /**
      * 更新知识库名称
      */
-    @PutMapping("/{id}")
-    public Result<Void> updateKnowledgeBaseName(@PathVariable Long id, @RequestBody @Validated KnowledgeBaseUpdateDTO updateDTO) {
-        knowledgeBaseService.updateKnowledgeBaseName(id, updateDTO);
+    @PutMapping("/update")
+    public Result<Void> updateKnowledgeBaseName(@RequestBody @Validated KnowledgeBaseUpdateDTO updateDTO) {
+        knowledgeBaseService.updateKnowledgeBaseName(updateDTO);
         return Result.success();
     }
 

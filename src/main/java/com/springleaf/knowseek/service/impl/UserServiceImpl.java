@@ -106,7 +106,7 @@ public class UserServiceImpl implements UserService {
         userMapper.setPrimaryOrgId(newOrganizationId, newUserId);
 
         // 创建一个用户默认的知识库
-        knowledgeBaseMapper.insertKnowledgeBase(DefaultKnowledgeBaseConstant.DEFAULT_NAME, newUserId);
+        knowledgeBaseMapper.insertKnowledgeBase(DefaultKnowledgeBaseConstant.DEFAULT_NAME, newUserId, DefaultKnowledgeBaseConstant.DEFAULT_DESC);
 
         log.info("新用户注册成功");
     }

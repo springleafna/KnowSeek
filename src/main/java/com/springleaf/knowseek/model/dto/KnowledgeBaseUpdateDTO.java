@@ -1,11 +1,15 @@
 package com.springleaf.knowseek.model.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class KnowledgeBaseUpdateDTO {
 
-    @NotBlank(message = "知识库名称不能为空")
+    @NotNull(message = "知识库ID不能为空！")
+    private Long id;
+
     private String name;
+
+    private String description;
 }

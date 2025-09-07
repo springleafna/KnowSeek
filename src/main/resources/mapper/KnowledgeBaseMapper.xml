@@ -7,6 +7,7 @@
         <id column="id" property="id" />
         <result column="name" property="name" />
         <result column="user_id" property="userId" />
+        <result column="description" property="description" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="deleted" property="deleted" />
@@ -17,10 +18,10 @@
         id, name, user_id, created_at, updated_at, deleted
     </sql>
 
-    <!-- 根据name、userId新增 -->
+    <!-- 根据name、userId, description新增 -->
     <insert id="insertKnowledgeBase" parameterType="com.springleaf.knowseek.model.entity.KnowledgeBase">
-        INSERT INTO tb_knowledge_base (name, user_id)
-        VALUES (#{name}, #{userId})
+        INSERT INTO tb_knowledge_base (name, user_id, description)
+        VALUES (#{name}, #{userId}, #{description})
     </insert>
 
     <!-- 根据id删除 -->
@@ -38,10 +39,17 @@
         WHERE user_id = #{userId} AND deleted = 0
     </select>
 
-    <!-- 根据id更新name（仅当未删除时） -->
+    <!-- 根据id更新name和description（仅当未删除且name和description不为空时） -->
     <update id="updateKnowledgeBaseNameById" parameterType="com.springleaf.knowseek.model.entity.KnowledgeBase">
         UPDATE tb_knowledge_base
-        SET name = #{name}
+        <set>
+            <if test="name != null and name != ''">
+                name = #{name},
+            </if>
+            <if test="description != null and description != ''">
+                description = #{description}
+            </if>
+        </set>
         WHERE id = #{id} AND deleted = 0
     </update>
 

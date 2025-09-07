@@ -19,7 +19,7 @@ public interface KnowledgeBaseMapper {
      * @param userId 用户ID
      * @return 返回影响的行数
      */
-    int insertKnowledgeBase(@Param("name") String name, @Param("userId") Long userId);
+    int insertKnowledgeBase(@Param("name") String name, @Param("userId") Long userId, @Param("description") String description);
 
     /**
      * 根据ID逻辑删除知识库
@@ -44,7 +44,7 @@ public interface KnowledgeBaseMapper {
      * @param name 新的知识库名称
      * @return 返回影响的行数
      */
-    int updateKnowledgeBaseNameById(@Param("id") Long id, @Param("name") String name);
+    int updateKnowledgeBaseNameById(@Param("id") Long id, @Param("name") String name, @Param("description") String description);
 
     /**
      * 根据ID获取未删除的知识库信息
