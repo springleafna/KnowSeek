@@ -75,7 +75,6 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     public void updateKnowledgeBaseName(KnowledgeBaseUpdateDTO updateDTO) {
-        // 这里也可以加权限校验
         knowledgeBaseMapper.updateKnowledgeBaseNameById(updateDTO.getId(), updateDTO.getName(), updateDTO.getDescription());
     }
 

@@ -15,7 +15,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, name, user_id, created_at, updated_at, deleted
+        id, name, user_id, description, created_at, updated_at, deleted
     </sql>
 
     <!-- 根据name、userId, description新增 -->
@@ -46,9 +46,7 @@
             <if test="name != null and name != ''">
                 name = #{name},
             </if>
-            <if test="description != null and description != ''">
-                description = #{description}
-            </if>
+            description = #{description}
         </set>
         WHERE id = #{id} AND deleted = 0
     </update>
