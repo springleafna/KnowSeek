@@ -26,9 +26,13 @@ public class FileItemVO {
      * 0 - 上传完成
      * 1 - 上传中
      * 2 - 上传失败
-     * 对应字段：status，TINYINT NOT NULL DEFAULT 0
      */
-    private Integer status;
+    private String status;
+
+    /**
+     * 知识库名称
+     */
+    private String knowledgeBaseName;
 
     /**
      * 组织标签，用于标识用户所属组织（可选）

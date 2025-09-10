@@ -2,17 +2,11 @@ package com.springleaf.knowseek.service;
 
 import com.springleaf.knowseek.model.dto.KnowledgeBaseCreateDTO;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseUpdateDTO;
-import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.KnowledgeBaseVO;
 
 import java.util.List;
 
 public interface KnowledgeBaseService {
-
-    /**
-     * 获取文件列表
-     */
-    List<FileItemVO> getFileList();
 
     /**
      * 为当前登录用户创建新的知识库

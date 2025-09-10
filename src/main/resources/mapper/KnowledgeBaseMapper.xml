@@ -59,4 +59,9 @@
         WHERE id = #{id} AND deleted = 0
     </select>
 
+    <!-- 根据ID获取知识库名称 -->
+    <select id="getNameById" resultType="java.lang.String">
+        SELECT name FROM tb_knowledge_base WHERE id = #{id} AND deleted = 0
+    </select>
+
 </mapper>

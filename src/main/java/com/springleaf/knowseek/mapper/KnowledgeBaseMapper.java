@@ -51,4 +51,11 @@ public interface KnowledgeBaseMapper {
      * @return 返回知识库实体，如果不存在或已删除则返回null
      */
     KnowledgeBase selectKnowledgeBaseById(@Param("id") Long id);
+
+    /**
+     * 根据ID获取未删除的知识库名称
+     * @param id 知识库ID
+     * @return 返回知识库名称
+     */
+    String getNameById(Long id);
 }

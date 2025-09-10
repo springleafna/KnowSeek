@@ -3,7 +3,6 @@ package com.springleaf.knowseek.controller;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseCreateDTO;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseUpdateDTO;
-import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.KnowledgeBaseVO;
 import com.springleaf.knowseek.service.KnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +17,6 @@ import java.util.List;
 public class KnowledgeBaseController {
 
     private final KnowledgeBaseService knowledgeBaseService;
-
-    /**
-     * 获取文件列表
-     */
-    @GetMapping("/getFileList")
-    public Result<List<FileItemVO>> getFileList() {
-        return Result.success(knowledgeBaseService.getFileList());
-    }
 
     /**
      * 创建知识库

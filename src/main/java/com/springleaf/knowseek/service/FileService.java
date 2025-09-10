@@ -14,6 +14,11 @@ import java.util.List;
 public interface FileService {
 
     /**
+     * 获取文件列表
+     */
+    List<FileItemVO> getFileList();
+
+    /**
      * 分片文件上传
      */
     String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO);

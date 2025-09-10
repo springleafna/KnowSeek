@@ -5,6 +5,7 @@ import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
 import com.springleaf.knowseek.model.dto.FileUploadPauseDTO;
+import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.model.vo.UploadProgressVO;
@@ -13,12 +14,22 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/file")
 @RequiredArgsConstructor
 public class FileController {
 
     private final FileService fileService;
+
+    /**
+     * 获取当前用户的文件列表
+     */
+    @GetMapping("/getFileList")
+    public Result<List<FileItemVO>> getFileList() {
+        return Result.success(fileService.getFileList());
+    }
 
     /**
      * 文件上传初始化

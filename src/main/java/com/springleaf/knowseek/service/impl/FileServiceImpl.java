@@ -12,6 +12,7 @@ import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.FileUploadMapper;
+import com.springleaf.knowseek.mapper.KnowledgeBaseMapper;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
@@ -26,6 +27,7 @@ import com.springleaf.knowseek.service.FileService;
 import com.springleaf.knowseek.utils.FileUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
@@ -49,7 +51,7 @@ public class FileServiceImpl implements FileService {
     private final FileUploadMapper fileUploadMapper;
     private final EventPublisher eventPublisher;
     private final FileVectorizeEvent fileVectorizeEvent;
-
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
 
     /**
      * 支持的文档类型扩展名（可以被Apache Tika解析并向量化的文件类型）
@@ -115,6 +117,31 @@ public class FileServiceImpl implements FileService {
             // 其他二进制文件
             "bin", "dat", "iso", "img"
     ));
+
+    @Override
+    public List<FileItemVO> getFileList() {
+        long userId = StpUtil.getLoginIdAsLong();
+        List<FileUpload> fileUploads = fileUploadMapper.selectByUserId(userId);
+        if (fileUploads.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return fileUploads.stream()
+                .map(fileUpload -> {
+                    FileItemVO fileItemVO = new FileItemVO();
+                    BeanUtils.copyProperties(fileUpload, fileItemVO);
+                    if (fileUpload.getStatus().equals(UploadStatusEnum.COMPLETED.getStatus())) {
+                        fileItemVO.setStatus(UploadStatusEnum.COMPLETED.getDescription());
+                    } else if (fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus())) {
+                        fileItemVO.setStatus(UploadStatusEnum.UPLOADING.getDescription());
+                    } else {
+                        fileItemVO.setStatus(UploadStatusEnum.FAILED.getDescription());
+                    }
+                    fileItemVO.setKnowledgeBaseName(knowledgeBaseMapper.getNameById(fileUpload.getKnowledgeBaseId()));
+                    return fileItemVO;
+                })
+                .collect(Collectors.toList());
+    }
 
     @Override
     public UploadInitVO initFileUpload(FileUploadChunkInitDTO dto) {
