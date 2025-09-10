@@ -67,4 +67,9 @@ public interface UserMapper {
      * 设置主组织ID
      */
     void setPrimaryOrgId(@Param("orgId") Long orgId, @Param("userId") Long userId);
+
+    /**
+     * 设置主知识库ID
+     */
+    void setPrimaryKnowledgeBaseId(@Param("knowledgeBaseId") Long knowledgeBaseId, @Param("userId") Long userId);
 }

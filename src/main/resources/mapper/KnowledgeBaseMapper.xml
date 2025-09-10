@@ -19,7 +19,7 @@
     </sql>
 
     <!-- 根据name、userId, description新增 -->
-    <insert id="insertKnowledgeBase" parameterType="com.springleaf.knowseek.model.entity.KnowledgeBase">
+    <insert id="insertKnowledgeBase" parameterType="com.springleaf.knowseek.model.entity.KnowledgeBase" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO tb_knowledge_base (name, user_id, description)
         VALUES (#{name}, #{userId}, #{description})
     </insert>

@@ -38,4 +38,9 @@ public class FileUploadChunkInitDTO {
     @Max(value = 10000, message = "分片总数不能大于10000")
     private Integer chunkTotal;
 
+    /**
+     * 知识库ID
+     */
+    @NotNull(message = "知识库ID不能为空")
+    private Long knowledgeBaseId;
 }

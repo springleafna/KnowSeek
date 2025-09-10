@@ -14,6 +14,7 @@ import com.springleaf.knowseek.mapper.UserOrganizationMapper;
 import com.springleaf.knowseek.model.dto.UserLoginDTO;
 import com.springleaf.knowseek.model.dto.UserPageDTO;
 import com.springleaf.knowseek.model.dto.UserRegisterDTO;
+import com.springleaf.knowseek.model.entity.KnowledgeBase;
 import com.springleaf.knowseek.model.entity.Organization;
 import com.springleaf.knowseek.model.entity.User;
 import com.springleaf.knowseek.model.entity.UserOrganization;
@@ -106,7 +107,12 @@ public class UserServiceImpl implements UserService {
         userMapper.setPrimaryOrgId(newOrganizationId, newUserId);
 
         // 创建一个用户默认的知识库
-        knowledgeBaseMapper.insertKnowledgeBase(DefaultKnowledgeBaseConstant.DEFAULT_NAME, newUserId, DefaultKnowledgeBaseConstant.DEFAULT_DESC);
+        KnowledgeBase knowledgeBase = new KnowledgeBase();
+        knowledgeBase.setName(DefaultKnowledgeBaseConstant.DEFAULT_NAME);
+        knowledgeBase.setUserId(newUserId);
+        knowledgeBase.setDescription(DefaultKnowledgeBaseConstant.DEFAULT_DESC);
+        knowledgeBaseMapper.insertKnowledgeBase(knowledgeBase);
+        userMapper.setPrimaryKnowledgeBaseId(knowledgeBase.getId(), newUserId);
 
         log.info("新用户注册成功");
     }

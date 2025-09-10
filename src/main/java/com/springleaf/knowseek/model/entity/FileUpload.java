@@ -51,6 +51,12 @@ public class FileUpload {
     private Long userId;
 
     /**
+     * 知识库 ID，标识文件所属知识库
+     * 对应字段：knowledge_base_id，BIGINT NOT NULL
+     */
+    private Long knowledgeBaseId;
+
+    /**
      * 组织标签，用于标识用户所属组织（可选）
      * 对应字段：org_tag，VARCHAR(50) DEFAULT NULL
      */
@@ -83,5 +89,10 @@ public class FileUpload {
      * 对应字段：merged_at，TIMESTAMP NULL DEFAULT NULL
      */
     private LocalDateTime mergedAt;
+
+    /**
+     * 删除标志（0正常 1删除）
+     */
+    private Boolean deleted;
 
 }

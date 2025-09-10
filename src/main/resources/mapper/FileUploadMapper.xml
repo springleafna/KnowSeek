@@ -7,6 +7,7 @@
         <result property="fileMd5" column="file_md5"/>
         <result property="fileName" column="file_name"/>
         <result property="userId" column="user_id"/>
+        <result property="knowledgeBaseId" column="knowledge_base_id"/>
         <result property="status" column="status"/>
         <result property="totalSize" column="total_size"/>
         <result property="orgTag" column="org_tag"/>
@@ -14,14 +15,15 @@
         <result property="location" column="location"/>
         <result property="createdAt" column="created_at"/>
         <result property="mergedAt" column="merged_at"/>
+        <result property="deleted" column="deleted"/>
     </resultMap>
 
     <!-- 新增文件上传记录 -->
     <insert id="saveFileUpload" parameterType="com.springleaf.knowseek.model.entity.FileUpload" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO tb_file_upload (
-            file_md5, file_name, total_size, status, user_id, org_tag, is_public, location
+            file_md5, file_name, total_size, status, user_id, knowledge_base_id, org_tag, is_public, location
         ) VALUES (
-                     #{fileMd5}, #{fileName}, #{totalSize}, #{status}, #{userId}, #{orgTag}, #{isPublic}, #{location}
+                     #{fileMd5}, #{fileName}, #{totalSize}, #{status}, #{userId}, #{knowledgeBaseId}, #{orgTag}, #{isPublic}, #{location}
                  )
     </insert>
 

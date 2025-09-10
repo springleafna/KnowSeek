@@ -126,6 +126,7 @@ public class FileServiceImpl implements FileService {
         String fileMd5 = dto.getFileMd5();
         Long fileSize = dto.getFileSize();  //文件大小
         Integer chunkTotal = dto.getChunkTotal();   // 分片总数
+        Long knowledgeBaseId = dto.getKnowledgeBaseId();
         String extension = FileUtil.getFileExtension(fileName);  // 获取文件扩展名：.xxx
         // URL 过期时间配置化
         long expireSeconds = ossConfig.getPresignedUrlExpiration();
@@ -155,7 +156,7 @@ public class FileServiceImpl implements FileService {
             // TODO：未处理 OSS 异常重试机制，ossClient.initiateMultipartUpload() 可能因网络抖动失败。
             // 设置文件上传路径
             String timestamp = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);    // 获取当前时间：如20250823
-            String fileKey = String.format(OssUserFileKeyConstant.USER_UPLOAD_FILE_KEY, userId, timestamp, fileMd5, extension);
+            String fileKey = String.format(OssUserFileKeyConstant.USER_UPLOAD_FILE_KEY, userId, knowledgeBaseId, timestamp, fileMd5, extension);
 
             // 未秒传，进行文件上传OSS初始化
             String uploadId;
@@ -200,6 +201,7 @@ public class FileServiceImpl implements FileService {
             fileUpload.setStatus(UploadStatusEnum.UPLOADING.getStatus());
             fileUpload.setUserId(userId);
             fileUpload.setTotalSize(fileSize);
+            fileUpload.setKnowledgeBaseId(knowledgeBaseId);
             // TODO:对于是否公开需要用户自行设置 或者 取消这个字段
             fileUpload.setIsPublic(false);
             fileUploadMapper.saveFileUpload(fileUpload);
@@ -215,6 +217,7 @@ public class FileServiceImpl implements FileService {
             redisValue.put("fileMd5", fileMd5);
             redisValue.put("userId", String.valueOf(userId));
             redisValue.put("chunkTotal", String.valueOf(chunkTotal));
+            redisValue.put("knowledgeBaseId", String.valueOf(knowledgeBaseId));
 
             stringRedisTemplate.opsForHash().putAll(fileUploadInfoKey, redisValue);
             stringRedisTemplate.expire(fileUploadInfoKey, expireSeconds, TimeUnit.SECONDS);

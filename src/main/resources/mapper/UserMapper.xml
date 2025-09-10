@@ -87,9 +87,17 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 设置用户主组织ID -->
     <update id="setPrimaryOrgId">
         UPDATE tb_user
         SET primary_org_id = #{orgId}
+        WHERE id = #{userId}
+    </update>
+
+    <!-- 设置用户主知识库ID -->
+    <update id="setPrimaryKnowledgeBaseId">
+        UPDATE tb_user
+        SET private_knowledge_base_id = #{knowledgeBaseId}
         WHERE id = #{userId}
     </update>
 

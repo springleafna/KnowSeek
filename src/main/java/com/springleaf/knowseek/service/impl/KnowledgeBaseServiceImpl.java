@@ -48,7 +48,11 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public void createKnowledgeBase(KnowledgeBaseCreateDTO createDTO) {
         long currentUserId = StpUtil.getLoginIdAsLong();
         log.info("用户 [{}] 创建知识库，知识库名称: {}", currentUserId, createDTO.getName());
-        knowledgeBaseMapper.insertKnowledgeBase(createDTO.getName(), currentUserId, createDTO.getDescription());
+        KnowledgeBase knowledgeBase = new KnowledgeBase();
+        knowledgeBase.setName(createDTO.getName());
+        knowledgeBase.setUserId(currentUserId);
+        knowledgeBase.setDescription(createDTO.getDescription());
+        knowledgeBaseMapper.insertKnowledgeBase(knowledgeBase);
     }
 
     @Override
