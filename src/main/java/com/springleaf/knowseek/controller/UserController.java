@@ -26,7 +26,7 @@ public class UserController {
      * 用户名 密码 登录
      */
     @PostMapping("/login")
-    public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO loginDTO) {
+    public Result<UserLoginVO> login(@RequestBody @Valid UserLoginDTO loginDTO) {
         UserLoginVO userLoginVO = userService.login(loginDTO);
         return Result.success(userLoginVO);
     }
@@ -35,7 +35,7 @@ public class UserController {
      * 用户名 密码 注册
      */
     @PostMapping("/register")
-    public Result<Void> register(@Valid @RequestBody UserRegisterDTO registerDTO) {
+    public Result<Void> register(@RequestBody @Valid UserRegisterDTO registerDTO) {
         userService.register(registerDTO);
         return Result.success();
     }

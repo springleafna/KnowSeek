@@ -29,7 +29,7 @@
 
     <!-- 判断文件是否已上传成功 -->
     <select id="existFileUpload" resultMap="resultMap">
-        SELECT * FROM tb_file_upload WHERE file_md5 = #{fileMd5} AND user_id = #{userId} ADN deleted = 0
+        SELECT * FROM tb_file_upload WHERE file_md5 = #{fileMd5} AND user_id = #{userId} AND deleted = 0
     </select>
 
     <!-- 更新文件的 OSS 地址 -->
@@ -37,7 +37,7 @@
         UPDATE tb_file_upload
         SET location = #{location}
         WHERE id = #{id}
-        ADN deleted = 0
+          AND deleted = 0
     </update>
 
     <!-- 更新文件上传状态 -->
@@ -45,14 +45,14 @@
         UPDATE tb_file_upload
         SET status = #{status}
         WHERE id = #{id}
-        ADN deleted = 0
+          AND deleted = 0
     </update>
 
     <update id="updateFileLocationAndStatus">
         UPDATE tb_file_upload
         SET location = #{location}, status = #{status}, merged_at = NOW()
         WHERE id = #{id}
-        ADN deleted = 0
+          AND deleted = 0
     </update>
 
     <!-- 根据 MD5 和用户 ID 查询文件详情 -->
@@ -61,11 +61,15 @@
         FROM tb_file_upload
         WHERE file_md5 = #{fileMd5}
           AND user_id = #{userId}
-          ADN deleted = 0
+          AND deleted = 0
     </select>
 
     <select id="selectByUserId" resultMap="resultMap">
-        SELECT * FROM tb_file_upload WHERE user_id = #{userId} ADN deleted = 0
+        SELECT * FROM tb_file_upload WHERE user_id = #{userId} AND deleted = 0
+    </select>
+
+    <select id="selectByKnowledgeBaseId" resultMap="resultMap">
+        SELECT * FROM tb_file_upload WHERE knowledge_base_id = #{id} AND deleted = 0
     </select>
 
 </mapper>

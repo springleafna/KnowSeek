@@ -30,7 +30,7 @@ public class ChatController {
     private final ChatService chatService;
 
     @PostMapping("/send")
-    public Result<ChatResponseVO> chat(@Valid @RequestBody ChatRequestDTO requestDTO) {
+    public Result<ChatResponseVO> chat(@RequestBody @Valid ChatRequestDTO requestDTO) {
         try {
             ChatResponseVO response = chatService.chat(requestDTO);
             return Result.success(response);
@@ -41,7 +41,7 @@ public class ChatController {
     }
 
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(@Valid @RequestBody ChatRequestDTO requestDTO) {
+    public SseEmitter streamChat(@RequestBody @Valid ChatRequestDTO requestDTO) {
         return chatService.streamChat(requestDTO);
     }
 
@@ -69,7 +69,7 @@ public class ChatController {
     }
     
     @PostMapping("/conversations")
-    public Result<ConversationVO> createConversation(@Valid @RequestBody CreateConversationDTO createDTO) {
+    public Result<ConversationVO> createConversation(@RequestBody @Valid CreateConversationDTO createDTO) {
         try {
             ConversationVO conversation = chatService.createConversation(createDTO);
             return Result.success(conversation);

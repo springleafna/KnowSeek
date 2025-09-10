@@ -394,9 +394,9 @@ public class FileServiceImpl implements FileService {
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
 
             // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
-            FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage.builder().location(location).build();
+            /*FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage.builder().location(location).build();
             eventPublisher.publish(fileVectorizeEvent.topic(), fileVectorizeEvent.buildEventMessage(fileVectorizeMessage));
-
+*/
             return new UploadCompleteVO(false, null, location);
         } catch (Exception e) {
             log.error("分片合并失败", e);
