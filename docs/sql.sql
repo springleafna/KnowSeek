@@ -67,3 +67,22 @@ CREATE TABLE tb_vector_chunk (
     text_content LONGTEXT COMMENT '原始文本内容（压缩存储）',
     model_version VARCHAR(32) DEFAULT 'text-embedding-v4' COMMENT '向量模型'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='向量分片表';
+
+CREATE TABLE tb_session (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '会话唯一ID',
+    user_id BIGINT NOT NULL COMMENT '所属用户ID',
+    session_name VARCHAR(255) DEFAULT '新对话' COMMENT '会话名称，便于用户识别',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '会话创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后活跃时间',
+    is_active BOOLEAN DEFAULT TRUE COMMENT '是否活跃（可选）',
+    metadata JSON DEFAULT NULL COMMENT '扩展字段，如模型版本、温度等配置'
+) COMMENT='AI对话会话，每个会话独立上下文';
+
+CREATE TABLE ai_messages (
+    message_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息唯一ID',
+    session_id BIGINT NOT NULL COMMENT '所属会话ID',
+    role ENUM('user', 'assistant', 'system') NOT NULL COMMENT '消息角色：用户/助手/系统',
+    content TEXT NOT NULL COMMENT '消息内容',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '消息创建时间',
+    metadata JSON DEFAULT NULL COMMENT '扩展字段，如模型、耗时、插件调用等'
+) COMMENT='AI对话消息记录，按会话隔离';
