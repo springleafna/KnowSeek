@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springleaf.knowseek.mapper.AiMessageMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.AiMessage">
+        <id column="message_id" property="messageId" />
+        <result column="session_id" property="sessionId" />
+        <result column="role" property="role" />
+        <result column="content" property="content" />
+        <result column="created_at" property="createdAt" />
+        <result column="metadata" property="metadata" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        message_id, session_id, role, content, created_at, metadata
+    </sql>
+
+    <!-- 插入消息 -->
+    <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.AiMessage" useGeneratedKeys="true" keyProperty="messageId">
+        INSERT INTO ai_messages (session_id, role, content, metadata)
+        VALUES (#{sessionId}, #{role}, #{content}, #{metadata})
+    </insert>
+
+    <!-- 根据ID查询消息 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM ai_messages
+        WHERE message_id = #{messageId}
+    </select>
+
+    <!-- 根据会话ID查询消息列表 -->
+    <select id="selectBySessionId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM ai_messages
+        WHERE session_id = #{sessionId}
+        ORDER BY created_at ASC
+    </select>
+
+    <!-- 根据会话ID和角色查询消息列表 -->
+    <select id="selectBySessionIdAndRole" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM ai_messages
+        WHERE session_id = #{sessionId} AND role = #{role}
+        ORDER BY created_at ASC
+    </select>
+
+    <!-- 删除会话的所有消息 -->
+    <delete id="deleteBySessionId" parameterType="java.lang.Long">
+        DELETE FROM ai_messages
+        WHERE session_id = #{sessionId}
+    </delete>
+
+</mapper>

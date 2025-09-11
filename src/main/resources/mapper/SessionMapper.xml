@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springleaf.knowseek.mapper.SessionMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.Session">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="session_name" property="sessionName" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="is_active" property="isActive" />
+        <result column="metadata" property="metadata" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, user_id, session_name, created_at, updated_at, is_active, metadata
+    </sql>
+
+    <!-- 插入会话 -->
+    <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.Session" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_session (user_id, session_name, is_active, metadata)
+        VALUES (#{userId}, #{sessionName}, #{isActive}, #{metadata})
+    </insert>
+
+    <!-- 根据ID查询会话 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_session
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据用户ID查询会话列表 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_session
+        WHERE user_id = #{userId}
+        ORDER BY updated_at DESC
+    </select>
+
+    <!-- 更新会话信息 -->
+    <update id="updateById" parameterType="com.springleaf.knowseek.model.entity.Session">
+        UPDATE tb_session
+        <set>
+            <if test="sessionName != null">session_name = #{sessionName},</if>
+            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="metadata != null">metadata = #{metadata},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新会话活跃状态 -->
+    <update id="updateActiveStatus">
+        UPDATE tb_session
+        SET is_active = #{isActive},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除会话 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM tb_session
+        WHERE id = #{id}
+    </delete>
+
+</mapper>
