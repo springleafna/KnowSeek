@@ -234,10 +234,8 @@ public class FileServiceImpl implements FileService {
     @Override
     public UploadCompleteVO completeChunkUpload(FileUploadCompleteDTO fileUploadCompleteDTO) {
         try {
-            log.info("开始分片合并: uploadId={}, fileName={}",
-                    fileUploadCompleteDTO.getUploadId(), fileUploadCompleteDTO.getFileName());
+            log.info("开始分片合并: uploadId={}", fileUploadCompleteDTO.getUploadId());
 
-            String fileName = fileUploadCompleteDTO.getFileName();
             String uploadId = fileUploadCompleteDTO.getUploadId();
             Integer chunkTotalSize = fileUploadCompleteDTO.getChunkTotalSize();
 
@@ -246,45 +244,51 @@ public class FileServiceImpl implements FileService {
             String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
             // 1. 获取文件信息
-            String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
-
-            if (idStr == null || fileKey == null) {
+            String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+            if (id == null || fileKey == null) {
                 throw new BusinessException("文件上传信息不完整");
             }
-            long id = Long.parseLong(idStr);
-
             List<PartETag> partETagList;
 
-            // 2. 判断 ZSet 的元素数量与实际分片总数是否相同，相同则根据redis中的ETag顺序进行合并，不相同则向阿里云oss发送请求进行分片校验
+            // 2. 判断 ZSet 的元素数量与实际分片总数是否相同
             Long redisETagCount = stringRedisTemplate.opsForZSet().size(chunkETagKey);
-            if (redisETagCount != null && redisETagCount.equals(Long.valueOf(chunkTotalSize))) {
+
+            if (redisETagCount != null && redisETagCount.longValue() == chunkTotalSize) {
+                // 尝试从 Redis 获取有序的 ETag 列表
                 Set<ZSetOperations.TypedTuple<String>> tuples =
                         stringRedisTemplate.opsForZSet().rangeWithScores(chunkETagKey, 0, -1);
-                if (tuples == null || tuples.isEmpty()) {
-                    throw new BusinessException("分片信息不存在");
-                }
-                // 正确转换为可变列表并排序
-                partETagList = tuples.stream()
-                        .map(tuple -> {
-                            Double score = tuple.getScore();
-                            if (score == null) {
-                                log.warn("分片score为null, ETag: {}", tuple.getValue());
-                                return null;
-                            }
-                            return new PartETag(score.intValue(), tuple.getValue());
-                        })
-                        .filter(Objects::nonNull)
-                        .sorted(Comparator.comparing(PartETag::getPartNumber))
-                        .collect(Collectors.toList());
 
-                if (partETagList.size() != chunkTotalSize) {
-                    log.warn("Redis中的ETag数量({})与总分片数({})不一致", partETagList.size(), chunkTotalSize);
-                    // 回退到OSS查询
+                if (tuples == null || tuples.isEmpty()) {
+                    log.warn("Redis 中的分片 ETag 列表为空或不存在，回退到 OSS 查询");
                     partETagList = getPartETagList(uploadId, fileKey);
+                } else {
+                    // 成功获取到 tuples，尝试构建 PartETag 列表
+                    partETagList = tuples.stream()
+                            .map(tuple -> {
+                                Double score = tuple.getScore();
+                                if (score == null) {
+                                    log.warn("分片 score 为 null，跳过该分片，ETag: {}", tuple.getValue());
+                                    return null;
+                                }
+                                return new PartETag(score.intValue(), tuple.getValue());
+                            })
+                            .filter(Objects::nonNull)
+                            .sorted(Comparator.comparing(PartETag::getPartNumber))
+                            .collect(Collectors.toList());
+
+                    // 如果转换后数量不对，说明 Redis 数据可能损坏，也回退
+                    if (partETagList.size() != chunkTotalSize) {
+                        log.warn("Redis 中解析出的 ETag 数量({}) 与预期总分片数({}) 不一致，回退到 OSS 查询",
+                                partETagList.size(), chunkTotalSize);
+                        partETagList = getPartETagList(uploadId, fileKey);
+                    }
                 }
             } else {
-                // 从阿里云OSS获取PartETag列表
+                // Redis 分片数不匹配，直接回退到 OSS
+                log.info("Redis 中记录的分片数({}) 与预期总数({}) 不一致，回退到 OSS 查询",
+                        redisETagCount, chunkTotalSize);
                 partETagList = getPartETagList(uploadId, fileKey);
             }
 
@@ -365,7 +369,7 @@ public class FileServiceImpl implements FileService {
                 // uploadId 不存在或已过期，视为“无分片上传”
                 uploadedParts.clear();
             } else {
-                throw e; // 其他错误抛出
+                throw e;
             }
         }
 

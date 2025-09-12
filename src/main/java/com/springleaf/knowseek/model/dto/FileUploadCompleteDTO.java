@@ -17,12 +17,6 @@ public class FileUploadCompleteDTO {
     private String uploadId;
 
     /**
-     * 文件名
-     */
-    @NotBlank(message = "文件名不能为空")
-    private String fileName;
-
-    /**
      * 分片总数
      */
     @NotNull(message = "分片总数不能为空")
