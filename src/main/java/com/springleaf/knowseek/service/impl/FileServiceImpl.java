@@ -13,6 +13,7 @@ import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.FileUploadMapper;
 import com.springleaf.knowseek.mapper.KnowledgeBaseMapper;
+import com.springleaf.knowseek.model.dto.FileUploadCancelDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
@@ -96,8 +97,8 @@ public class FileServiceImpl implements FileService {
         log.info("开始初始化文件上传，用户ID: {}, 文件名: {}, 文件MD5: {}, 文件大小：{}, 分片总数：{}", userId, fileName, fileMd5, fileSize, chunkTotal);
 
         try {
-            // 根据文件Md5值和用户ID判断文件是否以及被上传成功（秒传逻辑）
-            FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId);
+            // 根据文件Md5值和用户ID和知识库ID判断文件是否以及被上传成功（秒传逻辑）
+            FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId, knowledgeBaseId);
             if (fileUpload != null) {
                 Integer status = fileUpload.getStatus();
                 if (status.equals(UploadStatusEnum.COMPLETED.getStatus())) {
@@ -105,16 +106,8 @@ public class FileServiceImpl implements FileService {
                     log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
                     return new UploadInitVO(status, null, fileUpload.getLocation(), null);
                 }
-                if (status.equals(UploadStatusEnum.UPLOADING.getStatus())) {
-                    // 前端提示用户文件正在上传中，请稍等
-                    log.info("fileName:{}，该文件正在上传中", fileName);
-                    return new UploadInitVO(status, null, null, null);
-                }
-                if (status.equals(UploadStatusEnum.FAILED.getStatus())) {
-                    // 前端提示用户文件上传失败，允许重新上传
-                    log.info("fileName:{}，该文件上传失败", fileName);
-                    return new UploadInitVO(status, null, null, null);
-                }
+                // 其他情况：前端做不同提示
+                return new UploadInitVO(status, null, null, null);
             }
 
             // 设置文件上传路径
@@ -157,11 +150,11 @@ public class FileServiceImpl implements FileService {
                 throw new RuntimeException("文件上传初始化失败（网络或客户端错误）: " + e.getMessage(), e);
             }
 
-            // 将文件上传信息保存到数据库，设置上传状态为上传中
+            // 将文件上传信息保存到数据库，设置上传状态为初始化
             fileUpload = new FileUpload();
             fileUpload.setFileName(fileName);
             fileUpload.setFileMd5(fileMd5);
-            fileUpload.setStatus(UploadStatusEnum.UPLOADING.getStatus());
+            fileUpload.setStatus(UploadStatusEnum.INITIALIZED.getStatus());
             fileUpload.setUserId(userId);
             fileUpload.setTotalSize(fileSize);
             fileUpload.setKnowledgeBaseId(knowledgeBaseId);
@@ -208,6 +201,12 @@ public class FileServiceImpl implements FileService {
             String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+            if (chunkIndex == 1) {
+                // 上传第一个分片时将数据库文件上传状态设置为上传中
+                Long fileId = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+                fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.UPLOADING.getStatus());
+            }
+
             // 保存分片信息
             Map<String, String> chunkInfo = new HashMap<>();
             chunkInfo.put("chunkSize", String.valueOf(chunkSize));
@@ -374,6 +373,20 @@ public class FileServiceImpl implements FileService {
         }
 
         return new UploadProgressVO(uploadedParts);
+    }
+
+    @Override
+    public void cancelUpload(FileUploadCancelDTO fileUploadCancelDTO) {
+        String uploadId = fileUploadCancelDTO.getUploadId();
+
+        String chunkStatusKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
+        String chunkETagKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
+        String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
+
+        Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+        String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
+        String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+
     }
 
     /**

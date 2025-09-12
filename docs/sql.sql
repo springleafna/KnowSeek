@@ -27,7 +27,7 @@ CREATE TABLE tb_file_upload (
     file_md5     VARCHAR(32)      NOT NULL COMMENT '文件 MD5',
     file_name    VARCHAR(255)     NOT NULL COMMENT '文件名称',
     total_size   BIGINT           NOT NULL COMMENT '文件大小',
-    status       TINYINT          NOT NULL DEFAULT 0 COMMENT '上传状态，0-已上传，1-上传中，2-上传失败',
+    status       TINYINT          NOT NULL DEFAULT 0 COMMENT '上传状态，0-已上传，1-初始化完成，2-上传中，3-暂停上传，4-取消上传，5-上传失败',
     user_id      BIGINT           NOT NULL COMMENT '用户 ID',
     knowledge_base_id BIGINT NOT NULL COMMENT '知识库ID',
     org_tag      VARCHAR(50)      DEFAULT NULL COMMENT '组织标签',

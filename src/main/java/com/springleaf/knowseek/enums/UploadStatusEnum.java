@@ -18,19 +18,29 @@ public enum UploadStatusEnum {
     COMPLETED(0, "上传完成"),
 
     /**
+     * 初始化完成
+     */
+    INITIALIZED(1, "初始化完成"),
+
+    /**
      * 上传中（分片上传进行中）
      */
-    UPLOADING(1, "上传中"),
+    UPLOADING(2, "上传中"),
+
+    /**
+     * 暂停上传
+     */
+    PAUSED(3, "暂停"),
+
+    /**
+     * 取消上传
+     */
+    CANCELED(4, "取消上传"),
 
     /**
      * 上传失败（网络中断、校验失败等）
      */
-    FAILED(2, "上传失败"),
-
-    /**
-     * 初始化完成
-     */
-    INITIALIZED(3, "初始化完成");
+    FAILED(5, "上传失败");
 
     private final int status;
     private final String description;
@@ -52,8 +62,15 @@ public enum UploadStatusEnum {
     /**
      * 判断是否为“上传完成”
      */
-    public boolean isCompleted() {
-        return this == COMPLETED;
+    public boolean isCompleted(int status) {
+        return status == COMPLETED.getStatus();
+    }
+
+    /**
+     * 判断是否为“初始化完成”
+     */
+    public boolean isInitialized() {
+        return this == INITIALIZED;
     }
 
     /**
@@ -64,17 +81,24 @@ public enum UploadStatusEnum {
     }
 
     /**
+     * 判断是否为“暂停上传”
+     */
+    public boolean isPaused() {
+        return this == PAUSED;
+    }
+
+    /**
+     * 判断是否为“取消上传”
+     */
+    public boolean isCanceled() {
+        return this == CANCELED;
+    }
+
+    /**
      * 判断是否为“上传失败”
      */
     public boolean isFailed() {
         return this == FAILED;
-    }
-
-    /**
-     * 判断是否为“初始化完成”
-     */
-    public boolean isInitialized() {
-        return this == INITIALIZED;
     }
 
     @Override

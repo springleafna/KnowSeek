@@ -23,13 +23,17 @@
         INSERT INTO tb_file_upload (
             file_md5, file_name, total_size, status, user_id, knowledge_base_id, org_tag, is_public, location
         ) VALUES (
-                     #{fileMd5}, #{fileName}, #{totalSize}, #{status}, #{userId}, #{knowledgeBaseId}, #{orgTag}, #{isPublic}, #{location}
-                 )
+            #{fileMd5}, #{fileName}, #{totalSize}, #{status}, #{userId}, #{knowledgeBaseId}, #{orgTag}, #{isPublic}, #{location}
+        )
     </insert>
 
     <!-- 判断文件是否已上传成功 -->
     <select id="existFileUpload" resultMap="resultMap">
-        SELECT * FROM tb_file_upload WHERE file_md5 = #{fileMd5} AND user_id = #{userId} AND deleted = 0
+        SELECT * FROM tb_file_upload
+        WHERE file_md5 = #{fileMd5}
+        AND user_id = #{userId}
+        AND knowledge_base_id = #{knowledgeBaseId}
+        AND deleted = 0
     </select>
 
     <!-- 更新文件的 OSS 地址 -->

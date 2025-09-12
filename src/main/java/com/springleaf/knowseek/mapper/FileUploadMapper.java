@@ -17,7 +17,7 @@ public interface FileUploadMapper {
      * 判断文件是否已上传成功
      */
     FileUpload existFileUpload(@Param("fileMd5") String fileMd5,
-                            @Param("userId") Long userId);
+                               @Param("userId") Long userId, @Param("knowledgeBaseId") Long knowledgeBaseId);
 
     /**
      * 更新文件的 OSS 地址

@@ -1,10 +1,7 @@
 package com.springleaf.knowseek.controller;
 
 import com.springleaf.knowseek.common.Result;
-import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
-import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
-import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
-import com.springleaf.knowseek.model.dto.FileUploadPauseDTO;
+import com.springleaf.knowseek.model.dto.*;
 import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
@@ -78,7 +75,8 @@ public class FileController {
      * 取消上传
      */
     @PostMapping("/cancel")
-    public Result<?> cancelUpload(@RequestBody FileUploadPauseDTO fileUploadPauseDTO) {
+    public Result<Void> cancelUpload(@RequestBody FileUploadCancelDTO fileUploadCancelDTO) {
+        fileService.cancelUpload(fileUploadCancelDTO);
         return Result.success();
     }
 }
