@@ -25,7 +25,12 @@ public enum UploadStatusEnum {
     /**
      * 上传失败（网络中断、校验失败等）
      */
-    FAILED(2, "上传失败");
+    FAILED(2, "上传失败"),
+
+    /**
+     * 初始化完成
+     */
+    INITIALIZED(3, "初始化完成");
 
     private final int status;
     private final String description;
@@ -63,6 +68,13 @@ public enum UploadStatusEnum {
      */
     public boolean isFailed() {
         return this == FAILED;
+    }
+
+    /**
+     * 判断是否为“初始化完成”
+     */
+    public boolean isInitialized() {
+        return this == INITIALIZED;
     }
 
     @Override

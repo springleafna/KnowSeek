@@ -19,9 +19,9 @@ public interface FileService {
     List<FileItemVO> getFileList();
 
     /**
-     * 分片文件上传
+     * 保存分片信息
      */
-    String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO);
+    void uploadChunk(FileUploadChunkDTO fileUploadChunkDTO);
 
     /**
      * 文件上传初始化

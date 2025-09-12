@@ -3,7 +3,6 @@ package com.springleaf.knowseek.model.vo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,12 +13,15 @@ import java.util.Map;
 public class UploadInitVO {
 
     /**
-     * 是否已上传完成（可用于秒传）
+     * 上传状态：
+     * 0-上传完成：提醒用户文件已存在
+     * 1-上传中：提醒用户文件正在上传中
+     * 2-上传失败：允许用户重新上传
      */
-    private boolean uploaded;
+    private int status;
 
     /**
-     * 上传 ID（仅当 !uploaded 时有效）
+     * 上传 ID（仅当第一次上传时存在）
      */
     private String uploadId;
 

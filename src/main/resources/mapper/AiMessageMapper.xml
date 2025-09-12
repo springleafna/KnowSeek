@@ -4,7 +4,7 @@
 
     <!-- 通用查询映射结果 -->
     <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.AiMessage">
-        <id column="message_id" property="messageId" />
+        <id column="id" property="id" />
         <result column="session_id" property="sessionId" />
         <result column="role" property="role" />
         <result column="content" property="content" />
@@ -14,26 +14,26 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        message_id, session_id, role, content, created_at, metadata
+        id, session_id, role, content, created_at, metadata
     </sql>
 
     <!-- 插入消息 -->
     <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.AiMessage" useGeneratedKeys="true" keyProperty="messageId">
-        INSERT INTO ai_messages (session_id, role, content, metadata)
+        INSERT INTO tb_message (session_id, role, content, metadata)
         VALUES (#{sessionId}, #{role}, #{content}, #{metadata})
     </insert>
 
     <!-- 根据ID查询消息 -->
     <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM ai_messages
-        WHERE message_id = #{messageId}
+        FROM tb_message
+        WHERE id = #{messageId}
     </select>
 
     <!-- 根据会话ID查询消息列表 -->
     <select id="selectBySessionId" parameterType="java.lang.Long" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM ai_messages
+        FROM tb_message
         WHERE session_id = #{sessionId}
         ORDER BY created_at ASC
     </select>
@@ -41,14 +41,14 @@
     <!-- 根据会话ID和角色查询消息列表 -->
     <select id="selectBySessionIdAndRole" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM ai_messages
+        FROM tb_message
         WHERE session_id = #{sessionId} AND role = #{role}
         ORDER BY created_at ASC
     </select>
 
     <!-- 删除会话的所有消息 -->
     <delete id="deleteBySessionId" parameterType="java.lang.Long">
-        DELETE FROM ai_messages
+        DELETE FROM tb_message
         WHERE session_id = #{sessionId}
     </delete>
 

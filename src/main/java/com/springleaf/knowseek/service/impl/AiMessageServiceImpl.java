@@ -9,7 +9,7 @@ import com.springleaf.knowseek.model.entity.AiMessage;
 import com.springleaf.knowseek.model.entity.Session;
 import com.springleaf.knowseek.model.vo.AiMessageVO;
 import com.springleaf.knowseek.service.AiMessageService;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -20,14 +20,13 @@ import java.util.stream.Collectors;
 /**
  * AI消息服务实现类
  */
+@RequiredArgsConstructor
 @Service
 public class AiMessageServiceImpl implements AiMessageService {
 
-    @Resource
-    private AiMessageMapper aiMessageMapper;
+    private final AiMessageMapper aiMessageMapper;
 
-    @Resource
-    private SessionMapper sessionMapper;
+    private final SessionMapper sessionMapper;
 
     @Override
     public AiMessageVO createMessage(AiMessageCreateDTO createDTO) {

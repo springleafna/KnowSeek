@@ -1,5 +1,6 @@
 package com.springleaf.knowseek.utils;
 
+import com.springleaf.knowseek.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
@@ -7,10 +8,75 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * 文件类型判断工具类
+ * 文件工具类
  */
 @Slf4j
 public class FileUtil {
+
+    /**
+     * 支持的文档类型扩展名（可以被Apache Tika解析并向量化的文件类型）
+     */
+    private static final Set<String> SUPPORTED_DOCUMENT_EXTENSIONS = new HashSet<>(Arrays.asList(
+            // 文档类型
+            "pdf",          // PDF文档
+            "doc", "docx",  // Microsoft Word文档
+            "xls", "xlsx",  // Microsoft Excel表格
+            "ppt", "pptx",  // Microsoft PowerPoint演示文稿
+            "txt",          // 纯文本文件
+            "rtf",          // 富文本格式
+            "md",           // Markdown文档
+
+            // OpenDocument格式
+            "odt",          // OpenDocument文本文档
+            "ods",          // OpenDocument电子表格
+            "odp",          // OpenDocument演示文稿
+
+            // 网页和标记语言
+            "html", "htm",  // HTML文档
+            "xml",          // XML文档
+            "json",         // JSON文件
+            "csv",          // CSV文件
+
+            // 电子书格式
+            "epub",         // EPUB电子书
+
+            // 其他文档格式
+            "pages",        // Apple Pages文档
+            "numbers",      // Apple Numbers表格
+            "keynote"       // Apple Keynote演示文稿
+    ));
+
+    /**
+     * 不支持的文件类型扩展名（无法有效解析文本内容的文件类型）
+     */
+    private static final Set<String> UNSUPPORTED_EXTENSIONS = new HashSet<>(Arrays.asList(
+            // 图片文件
+            "jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "tiff", "ico", "psd",
+
+            // 音频文件
+            "mp3", "wav", "flac", "aac", "ogg", "wma", "m4a",
+
+            // 视频文件
+            "mp4", "avi", "mov", "wmv", "flv", "mkv", "webm", "m4v", "3gp",
+
+            // 压缩包
+            "zip", "rar", "7z", "tar", "gz", "bz2", "xz",
+
+            // 可执行文件
+            "exe", "msi", "dmg", "pkg", "deb", "rpm",
+
+            // 字体文件
+            "ttf", "otf", "woff", "woff2", "eot",
+
+            // CAD文件
+            "dwg", "dxf", "step", "iges",
+
+            // 数据库文件
+            "db", "sqlite", "mdb", "accdb",
+
+            // 其他二进制文件
+            "bin", "dat", "iso", "img"
+    ));
 
     /**
      * 根据文件名获取文件扩展名 .xxx
@@ -149,68 +215,68 @@ public class FileUtil {
     }
 
     /**
-     * 支持的文档类型扩展名（可以被Apache Tika解析并向量化的文件类型）
+     * 验证文件类型是否支持
+     * @param fileName 文件名
      */
-    private static final Set<String> SUPPORTED_DOCUMENT_EXTENSIONS = new HashSet<>(Arrays.asList(
-            // 文档类型
-            "pdf",          // PDF文档
-            "doc", "docx",  // Microsoft Word文档
-            "xls", "xlsx",  // Microsoft Excel表格
-            "ppt", "pptx",  // Microsoft PowerPoint演示文稿
-            "txt",          // 纯文本文件
-            "rtf",          // 富文本格式
-            "md",           // Markdown文档
+    public static void validateFileType(String fileName) {
+        log.info("开始验证文件类型: fileName={}", fileName);
 
-            // OpenDocument格式
-            "odt",          // OpenDocument文本文档
-            "ods",          // OpenDocument电子表格
-            "odp",          // OpenDocument演示文稿
+        if (fileName == null || fileName.trim().isEmpty()) {
+            log.warn("文件名为空或null");
+            throw new BusinessException("文件名不能为空");
+        }
 
-            // 网页和标记语言
-            "html", "htm",  // HTML文档
-            "xml",          // XML文档
-            "json",         // JSON文件
-            "csv",          // CSV文件
+        // 提取文件扩展名
+        String extension = extractFileExtension(fileName);
+        if (extension == null) {
+            log.warn("无法提取文件扩展名: fileName={}", fileName);
+            throw new BusinessException("文件必须有扩展名");
+        }
 
-            // 电子书格式
-            "epub",         // EPUB电子书
+        // 获取文件类型
+        String fileType = getFileTypeDescription(extension);
+        log.info("文件类型识别结果: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
 
-            // 其他文档格式
-            "pages",        // Apple Pages文档
-            "numbers",      // Apple Numbers表格
-            "keynote"       // Apple Keynote演示文稿
-    ));
+        // 检查是否为支持的文档类型
+        if (SUPPORTED_DOCUMENT_EXTENSIONS.contains(extension)) {
+            log.info("文件类型验证通过: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
+        }
+
+        // 检查是否为明确不支持的类型
+        if (UNSUPPORTED_EXTENSIONS.contains(extension)) {
+            String message = String.format("不支持的文件类型：%s。系统仅支持文档类型文件的解析和向量化", fileType);
+            log.warn("文件类型验证失败: fileName={}, extension={}, fileType={}, reason=unsupported_type",
+                    fileName, extension, fileType);
+            throw new BusinessException(message);
+        }
+
+        // 对于未知的文件类型，给出提示
+        String message = String.format("未知的文件类型：%s。建议使用支持的文档格式（如PDF、Word、Excel、PowerPoint、文本文件等）", fileType);
+        log.warn("文件类型验证失败: fileName={}, extension={}, fileType={}, reason=unknown_type",
+                fileName, extension, fileType);
+        throw new BusinessException(message);
+    }
 
     /**
-     * 不支持的文件类型扩展名（无法有效解析文本内容的文件类型）
+     * 获取支持的文件类型列表（用于前端显示）
+     *
+     * @return 支持的文件类型描述列表
      */
-    private static final Set<String> UNSUPPORTED_EXTENSIONS = new HashSet<>(Arrays.asList(
-            // 图片文件
-            "jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "tiff", "ico", "psd",
+    public Set<String> getSupportedFileTypes() {
+        Set<String> supportedTypes = new HashSet<>();
+        for (String extension : SUPPORTED_DOCUMENT_EXTENSIONS) {
+            supportedTypes.add(getFileTypeDescription(extension));
+        }
+        return supportedTypes;
+    }
 
-            // 音频文件
-            "mp3", "wav", "flac", "aac", "ogg", "wma", "m4a",
-
-            // 视频文件
-            "mp4", "avi", "mov", "wmv", "flv", "mkv", "webm", "m4v", "3gp",
-
-            // 压缩包
-            "zip", "rar", "7z", "tar", "gz", "bz2", "xz",
-
-            // 可执行文件
-            "exe", "msi", "dmg", "pkg", "deb", "rpm",
-
-            // 字体文件
-            "ttf", "otf", "woff", "woff2", "eot",
-
-            // CAD文件
-            "dwg", "dxf", "step", "iges",
-
-            // 数据库文件
-            "db", "sqlite", "mdb", "accdb",
-
-            // 其他二进制文件
-            "bin", "dat", "iso", "img"
-    ));
+    /**
+     * 获取支持的文件扩展名列表
+     *
+     * @return 支持的文件扩展名集合
+     */
+    public Set<String> getSupportedExtensions() {
+        return new HashSet<>(SUPPORTED_DOCUMENT_EXTENSIONS);
+    }
 
 }

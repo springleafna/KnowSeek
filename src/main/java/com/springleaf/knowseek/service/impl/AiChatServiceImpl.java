@@ -5,14 +5,13 @@ import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.model.dto.AiChatRequestDTO;
 import com.springleaf.knowseek.model.dto.AiMessageCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionCreateDTO;
-import com.springleaf.knowseek.model.entity.Session;
 import com.springleaf.knowseek.model.vo.AiChatResponseVO;
 import com.springleaf.knowseek.model.vo.AiMessageVO;
 import com.springleaf.knowseek.model.vo.SessionVO;
 import com.springleaf.knowseek.service.AiChatService;
 import com.springleaf.knowseek.service.AiMessageService;
 import com.springleaf.knowseek.service.SessionService;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,14 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * AI对话服务实现类
  */
+@RequiredArgsConstructor
 @Service
 public class AiChatServiceImpl implements AiChatService {
 
-    @Resource
-    private SessionService sessionService;
+    private final SessionService sessionService;
 
-    @Resource
-    private AiMessageService aiMessageService;
+    private final AiMessageService aiMessageService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)

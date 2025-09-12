@@ -53,71 +53,6 @@ public class FileServiceImpl implements FileService {
     private final FileVectorizeEvent fileVectorizeEvent;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
 
-    /**
-     * 支持的文档类型扩展名（可以被Apache Tika解析并向量化的文件类型）
-     */
-    private static final Set<String> SUPPORTED_DOCUMENT_EXTENSIONS = new HashSet<>(Arrays.asList(
-            // 文档类型
-            "pdf",          // PDF文档
-            "doc", "docx",  // Microsoft Word文档
-            "xls", "xlsx",  // Microsoft Excel表格
-            "ppt", "pptx",  // Microsoft PowerPoint演示文稿
-            "txt",          // 纯文本文件
-            "rtf",          // 富文本格式
-            "md",           // Markdown文档
-
-            // OpenDocument格式
-            "odt",          // OpenDocument文本文档
-            "ods",          // OpenDocument电子表格
-            "odp",          // OpenDocument演示文稿
-
-            // 网页和标记语言
-            "html", "htm",  // HTML文档
-            "xml",          // XML文档
-            "json",         // JSON文件
-            "csv",          // CSV文件
-
-            // 电子书格式
-            "epub",         // EPUB电子书
-
-            // 其他文档格式
-            "pages",        // Apple Pages文档
-            "numbers",      // Apple Numbers表格
-            "keynote"       // Apple Keynote演示文稿
-    ));
-
-    /**
-     * 不支持的文件类型扩展名（无法有效解析文本内容的文件类型）
-     */
-    private static final Set<String> UNSUPPORTED_EXTENSIONS = new HashSet<>(Arrays.asList(
-            // 图片文件
-            "jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "tiff", "ico", "psd",
-
-            // 音频文件
-            "mp3", "wav", "flac", "aac", "ogg", "wma", "m4a",
-
-            // 视频文件
-            "mp4", "avi", "mov", "wmv", "flv", "mkv", "webm", "m4v", "3gp",
-
-            // 压缩包
-            "zip", "rar", "7z", "tar", "gz", "bz2", "xz",
-
-            // 可执行文件
-            "exe", "msi", "dmg", "pkg", "deb", "rpm",
-
-            // 字体文件
-            "ttf", "otf", "woff", "woff2", "eot",
-
-            // CAD文件
-            "dwg", "dxf", "step", "iges",
-
-            // 数据库文件
-            "db", "sqlite", "mdb", "accdb",
-
-            // 其他二进制文件
-            "bin", "dat", "iso", "img"
-    ));
-
     @Override
     public List<FileItemVO> getFileList() {
         long userId = StpUtil.getLoginIdAsLong();
@@ -146,8 +81,8 @@ public class FileServiceImpl implements FileService {
     @Override
     public UploadInitVO initFileUpload(FileUploadChunkInitDTO dto) {
         String fileName = dto.getFileName();
-        // TODO:验证文件类型是否支持
-        // validateFileType(fileName);
+        // 验证文件类型是否支持
+        FileUtil.validateFileType(fileName);
 
         Long userId = StpUtil.getLoginIdAsLong();
         String fileMd5 = dto.getFileMd5();
@@ -162,25 +97,26 @@ public class FileServiceImpl implements FileService {
 
         try {
             // 根据文件Md5值和用户ID判断文件是否以及被上传成功（秒传逻辑）
-            // TODO：需要考虑存在但未上传成功的情况，由于md5唯一约束会导致插入出错
             FileUpload fileUpload = fileUploadMapper.existFileUpload(fileMd5, userId);
-            if (fileUpload != null && fileUpload.getStatus().equals(UploadStatusEnum.COMPLETED.getStatus())) {
-                log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
-                return new UploadInitVO(true, null, fileUpload.getLocation(), null);
-            }
-            if (fileUpload != null && fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus())) {
-                // TODO：该文件正在上传中，是否应该提醒用户
-                log.info("fileName:{}，该文件正在上传中", fileName);
-                return new UploadInitVO(true, null, null, null);
-            }
-            if (fileUpload != null && fileUpload.getStatus().equals(UploadStatusEnum.FAILED.getStatus())) {
-                // TODO：该文件上传失败，要采取重新上传流程
-                log.info("fileName:{}，该文件上传失败", fileName);
-                return new UploadInitVO(true, null, null, null);
+            if (fileUpload != null) {
+                Integer status = fileUpload.getStatus();
+                if (status.equals(UploadStatusEnum.COMPLETED.getStatus())) {
+                    // 前端提示用户文件已存在
+                    log.info("fileName:{}，该文件已经被上传成功，支持秒传", fileName);
+                    return new UploadInitVO(status, null, fileUpload.getLocation(), null);
+                }
+                if (status.equals(UploadStatusEnum.UPLOADING.getStatus())) {
+                    // 前端提示用户文件正在上传中，请稍等
+                    log.info("fileName:{}，该文件正在上传中", fileName);
+                    return new UploadInitVO(status, null, null, null);
+                }
+                if (status.equals(UploadStatusEnum.FAILED.getStatus())) {
+                    // 前端提示用户文件上传失败，允许重新上传
+                    log.info("fileName:{}，该文件上传失败", fileName);
+                    return new UploadInitVO(status, null, null, null);
+                }
             }
 
-            // TODO：启动定时任务扫描数据库和Redis并中止“超时未完成”的 uploadId
-            // TODO：未处理 OSS 异常重试机制，ossClient.initiateMultipartUpload() 可能因网络抖动失败。
             // 设置文件上传路径
             String timestamp = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);    // 获取当前时间：如20250823
             String fileKey = String.format(OssUserFileKeyConstant.USER_UPLOAD_FILE_KEY, userId, knowledgeBaseId, timestamp, fileMd5, extension);
@@ -250,7 +186,7 @@ public class FileServiceImpl implements FileService {
             stringRedisTemplate.expire(fileUploadInfoKey, expireSeconds, TimeUnit.SECONDS);
             log.info("文件上传信息已存入Redis，key: {}", fileUploadInfoKey);
 
-            return new UploadInitVO(false, uploadId, null, uploadUrls);
+            return new UploadInitVO(UploadStatusEnum.INITIALIZED.getStatus(), uploadId, null, uploadUrls);
         } catch (Exception e) {
             log.error("初始化文件上传失败，文件名: {}, 文件MD5: {}, 错误信息: {}", fileName, fileMd5, e.getMessage());
             throw new BusinessException("初始化文件上传失败，请重试");
@@ -258,7 +194,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public String uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) {
+    public void uploadChunk(FileUploadChunkDTO fileUploadChunkDTO) {
         try {
             String uploadId = fileUploadChunkDTO.getUploadId();
             Integer chunkIndex = fileUploadChunkDTO.getChunkIndex();
@@ -288,8 +224,6 @@ public class FileServiceImpl implements FileService {
             stringRedisTemplate.opsForZSet().add(chunkETagKey, eTag, chunkIndex);
 
             log.info("分片上报成功: uploadId={}, chunkIndex={}, eTag={}", uploadId, chunkIndex, eTag);
-
-            return eTag;
         } catch (Exception e) {
             log.error("分片上报失败: {}", fileUploadChunkDTO, e);
             throw new BusinessException("分片上报失败: " + e.getMessage());
@@ -495,255 +429,6 @@ public class FileServiceImpl implements FileService {
             log.error("客户端错误 - 调用 ListParts 失败。Bucket: {}, fileKey: {}, uploadId: {}, Message: {}",
                     ossConfig.getBucketName(), fileKey, uploadId, e.getMessage(), e);
             throw new RuntimeException("网络或客户端错误，无法获取分片列表", e);
-        }
-    }
-
-    /**
-     * 验证文件类型是否支持
-     * @param fileName 文件名
-     */
-    public void validateFileType(String fileName) {
-        log.info("开始验证文件类型: fileName={}", fileName);
-
-        if (fileName == null || fileName.trim().isEmpty()) {
-            log.warn("文件名为空或null");
-            throw new BusinessException("文件名不能为空");
-        }
-
-        // 提取文件扩展名
-        String extension = FileUtil.extractFileExtension(fileName);
-        if (extension == null) {
-            log.warn("无法提取文件扩展名: fileName={}", fileName);
-            throw new BusinessException("文件必须有扩展名");
-        }
-
-        // 获取文件类型
-        String fileType = getFileTypeDescription(extension);
-        log.info("文件类型识别结果: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
-
-        // 检查是否为支持的文档类型
-        if (SUPPORTED_DOCUMENT_EXTENSIONS.contains(extension)) {
-            log.info("文件类型验证通过: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
-            // TODO:这里和下面不应该抛异常
-            throw new BusinessException("支持的文件类型");
-        }
-
-        // 检查是否为明确不支持的类型
-        if (UNSUPPORTED_EXTENSIONS.contains(extension)) {
-            String message = String.format("不支持的文件类型：%s。系统仅支持文档类型文件的解析和向量化", fileType);
-            log.warn("文件类型验证失败: fileName={}, extension={}, fileType={}, reason=unsupported_type",
-                    fileName, extension, fileType);
-            throw new BusinessException(message);
-        }
-
-        // 对于未知的文件类型，给出提示
-        String message = String.format("未知的文件类型：%s。建议使用支持的文档格式（如PDF、Word、Excel、PowerPoint、文本文件等）", fileType);
-        log.warn("文件类型验证失败: fileName={}, extension={}, fileType={}, reason=unknown_type",
-                fileName, extension, fileType);
-        throw new BusinessException(message);
-    }
-
-    /**
-     * 根据文件扩展名获取文件类型描述
-     *
-     * @param extension 文件扩展名
-     * @return 文件类型描述
-     */
-    private String getFileTypeDescription(String extension) {
-        if (extension == null) {
-            return "unknown";
-        }
-
-        // 根据文件扩展名返回文件类型
-        switch (extension.toLowerCase()) {
-            case "pdf":
-                return "PDF文档";
-            case "doc":
-            case "docx":
-                return "Word文档";
-            case "xls":
-            case "xlsx":
-                return "Excel表格";
-            case "ppt":
-            case "pptx":
-                return "PowerPoint演示文稿";
-            case "txt":
-                return "文本文件";
-            case "rtf":
-                return "富文本文档";
-            case "md":
-                return "Markdown文档";
-            case "odt":
-                return "OpenDocument文本";
-            case "ods":
-                return "OpenDocument表格";
-            case "odp":
-                return "OpenDocument演示文稿";
-            case "html":
-            case "htm":
-                return "HTML文档";
-            case "xml":
-                return "XML文档";
-            case "json":
-                return "JSON文件";
-            case "csv":
-                return "CSV文件";
-            case "epub":
-                return "EPUB电子书";
-            case "pages":
-                return "Apple Pages文档";
-            case "numbers":
-                return "Apple Numbers表格";
-            case "keynote":
-                return "Apple Keynote演示文稿";
-            case "jpg":
-            case "jpeg":
-                return "JPEG图片";
-            case "png":
-                return "PNG图片";
-            case "gif":
-                return "GIF图片";
-            case "bmp":
-                return "BMP图片";
-            case "svg":
-                return "SVG图片";
-            case "mp4":
-                return "MP4视频";
-            case "avi":
-                return "AVI视频";
-            case "mov":
-                return "MOV视频";
-            case "mp3":
-                return "MP3音频";
-            case "wav":
-                return "WAV音频";
-            case "zip":
-                return "ZIP压缩包";
-            case "rar":
-                return "RAR压缩包";
-            case "7z":
-                return "7Z压缩包";
-            default:
-                return extension.toUpperCase() + "文件";
-        }
-    }
-
-    /**
-     * 获取支持的文件类型列表（用于前端显示）
-     *
-     * @return 支持的文件类型描述列表
-     */
-    public Set<String> getSupportedFileTypes() {
-        Set<String> supportedTypes = new HashSet<>();
-        for (String extension : SUPPORTED_DOCUMENT_EXTENSIONS) {
-            supportedTypes.add(getFileTypeDescription(extension));
-        }
-        return supportedTypes;
-    }
-
-    /**
-     * 获取支持的文件扩展名列表
-     *
-     * @return 支持的文件扩展名集合
-     */
-    public Set<String> getSupportedExtensions() {
-        return new HashSet<>(SUPPORTED_DOCUMENT_EXTENSIONS);
-    }
-
-    /**
-     * 根据文件名获取文件类型
-     *
-     * @param fileName 文件名
-     * @return 文件类型
-     */
-    private String getFileType(String fileName) {
-        if (fileName == null || fileName.isEmpty()) {
-            return "unknown";
-        }
-
-        int lastDotIndex = fileName.lastIndexOf('.');
-        if (lastDotIndex == -1 || lastDotIndex == fileName.length() - 1) {
-            return "unknown";
-        }
-
-        String extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-
-        // 根据文件扩展名返回文件类型
-        switch (extension) {
-            case "pdf":
-                return "PDF文档";
-            case "doc":
-            case "docx":
-                return "Word文档";
-            case "xls":
-            case "xlsx":
-                return "Excel表格";
-            case "ppt":
-            case "pptx":
-                return "PowerPoint演示文稿";
-            case "txt":
-                return "文本文件";
-            case "md":
-                return "Markdown文档";
-            case "jpg":
-            case "jpeg":
-                return "JPEG图片";
-            case "png":
-                return "PNG图片";
-            case "gif":
-                return "GIF图片";
-            case "bmp":
-                return "BMP图片";
-            case "svg":
-                return "SVG图片";
-            case "mp4":
-                return "MP4视频";
-            case "avi":
-                return "AVI视频";
-            case "mov":
-                return "MOV视频";
-            case "wmv":
-                return "WMV视频";
-            case "mp3":
-                return "MP3音频";
-            case "wav":
-                return "WAV音频";
-            case "flac":
-                return "FLAC音频";
-            case "zip":
-                return "ZIP压缩包";
-            case "rar":
-                return "RAR压缩包";
-            case "7z":
-                return "7Z压缩包";
-            case "tar":
-                return "TAR压缩包";
-            case "gz":
-                return "GZ压缩包";
-            case "json":
-                return "JSON文件";
-            case "xml":
-                return "XML文件";
-            case "csv":
-                return "CSV文件";
-            case "html":
-            case "htm":
-                return "HTML文件";
-            case "css":
-                return "CSS文件";
-            case "js":
-                return "JavaScript文件";
-            case "java":
-                return "Java源码";
-            case "py":
-                return "Python源码";
-            case "cpp":
-            case "c":
-                return "C/C++源码";
-            case "sql":
-                return "SQL文件";
-            default:
-                return extension.toUpperCase() + "文件";
         }
     }
 }

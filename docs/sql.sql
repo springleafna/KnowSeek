@@ -78,8 +78,8 @@ CREATE TABLE tb_session (
     metadata JSON DEFAULT NULL COMMENT '扩展字段，如模型版本、温度等配置'
 ) COMMENT='AI对话会话，每个会话独立上下文';
 
-CREATE TABLE ai_messages (
-    message_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息唯一ID',
+CREATE TABLE tb_message (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息唯一ID',
     session_id BIGINT NOT NULL COMMENT '所属会话ID',
     role ENUM('user', 'assistant', 'system') NOT NULL COMMENT '消息角色：用户/助手/系统',
     content TEXT NOT NULL COMMENT '消息内容',

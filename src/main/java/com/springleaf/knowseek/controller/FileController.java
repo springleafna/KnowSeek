@@ -49,12 +49,12 @@ public class FileController {
     }
 
     /**
-     * 上传单个分片
+     * 保存分片信息
      */
     @PostMapping("/chunk")
-    public Result<String> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) {
-        String ETag = fileService.uploadChunk(fileUploadChunkDTO);
-        return Result.success(ETag);
+    public Result<Void> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) {
+        fileService.uploadChunk(fileUploadChunkDTO);
+        return Result.success();
     }
 
     /**

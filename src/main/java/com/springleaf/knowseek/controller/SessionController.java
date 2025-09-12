@@ -5,8 +5,8 @@ import com.springleaf.knowseek.model.dto.SessionCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
 import com.springleaf.knowseek.model.vo.SessionVO;
 import com.springleaf.knowseek.service.SessionService;
-import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,12 +14,12 @@ import java.util.List;
 /**
  * 会话管理接口
  */
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/sessions")
 public class SessionController {
 
-    @Resource
-    private SessionService sessionService;
+    private final SessionService sessionService;
 
     /**
      * 创建会话

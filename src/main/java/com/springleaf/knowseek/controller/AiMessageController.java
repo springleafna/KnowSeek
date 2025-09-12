@@ -4,8 +4,8 @@ import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.AiMessageCreateDTO;
 import com.springleaf.knowseek.model.vo.AiMessageVO;
 import com.springleaf.knowseek.service.AiMessageService;
-import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,11 +14,11 @@ import java.util.List;
  * AI消息管理接口
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/messages")
 public class AiMessageController {
 
-    @Resource
-    private AiMessageService aiMessageService;
+    private final AiMessageService aiMessageService;
 
     /**
      * 创建消息

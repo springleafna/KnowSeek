@@ -17,7 +17,7 @@ public class AiMessage {
     /**
      * 消息唯一ID
      */
-    private Long messageId;
+    private Long id;
 
     /**
      * 所属会话ID

@@ -4,8 +4,8 @@ import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.AiChatRequestDTO;
 import com.springleaf.knowseek.model.vo.AiChatResponseVO;
 import com.springleaf.knowseek.service.AiChatService;
-import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,11 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
  * AI对话接口
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/ai/chat")
 public class AiChatController {
 
-    @Resource
-    private AiChatService aiChatService;
+    private final AiChatService aiChatService;
 
     /**
      * 发送消息并获取AI回复
