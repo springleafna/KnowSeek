@@ -13,10 +13,7 @@ import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.FileUploadMapper;
 import com.springleaf.knowseek.mapper.KnowledgeBaseMapper;
-import com.springleaf.knowseek.model.dto.FileUploadCancelDTO;
-import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
-import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
-import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
+import com.springleaf.knowseek.model.dto.*;
 import com.springleaf.knowseek.model.entity.FileUpload;
 import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
@@ -378,15 +375,180 @@ public class FileServiceImpl implements FileService {
     @Override
     public void cancelUpload(FileUploadCancelDTO fileUploadCancelDTO) {
         String uploadId = fileUploadCancelDTO.getUploadId();
+        log.info("开始取消上传，uploadId: {}", uploadId);
 
         String chunkStatusKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_STATUS_KEY, uploadId);
         String chunkETagKey = String.format(UploadRedisKeyConstant.FILE_CHUNK_ETAG_KEY, uploadId);
         String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
-        Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
-        String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
-        String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+        try {
+            // 从Redis获取文件上传信息
+            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
+            String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+            String chunkTotal = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
 
+            if (id == null || fileKey == null) {
+                log.warn("文件上传信息不存在或已过期，uploadId: {}", uploadId);
+                throw new BusinessException("上传任务不存在或已过期");
+            }
+
+            // 1. 终止阿里云OSS的分片上传
+            try {
+                AbortMultipartUploadRequest abortRequest = new AbortMultipartUploadRequest(
+                        ossConfig.getBucketName(), fileKey, uploadId);
+                ossClient.abortMultipartUpload(abortRequest);
+                log.info("OSS分片上传已终止，uploadId: {}", uploadId);
+            } catch (OSSException e) {
+                if (!"NoSuchUpload".equals(e.getErrorCode())) {
+                    log.error("终止OSS分片上传失败，uploadId: {}, errorCode: {}, message: {}",
+                            uploadId, e.getErrorCode(), e.getMessage());
+                } else {
+                    log.info("OSS分片上传不存在或已过期，uploadId: {}", uploadId);
+                }
+            } catch (Exception e) {
+                log.error("终止OSS分片上传时发生异常，uploadId: {}", uploadId, e);
+            }
+
+            // 2. 更新数据库状态为取消上传
+            fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.CANCELED.getStatus());
+            log.info("文件上传状态已更新为取消，fileId: {}, fileName: {}", id, fileName);
+
+            // 3. 清理Redis中的相关数据
+            List<String> keysToDelete = new ArrayList<>();
+            if (chunkTotal != null) {
+                int totalChunks = Integer.parseInt(chunkTotal);
+                for (int i = 1; i <= totalChunks; i++) {
+                    keysToDelete.add(String.format(UploadRedisKeyConstant.FILE_CHUNK_INFO_KEY, uploadId, i));
+                }
+            }
+            keysToDelete.add(chunkStatusKey);
+            keysToDelete.add(chunkETagKey);
+            keysToDelete.add(fileUploadInfoKey);
+
+            stringRedisTemplate.delete(keysToDelete);
+            log.info("Redis缓存已清理，uploadId: {}", uploadId);
+
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("取消上传失败，uploadId: {}", uploadId, e);
+            throw new BusinessException("取消上传失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void pauseUpload(FileUploadPauseDTO fileUploadPauseDTO) {
+        String uploadId = fileUploadPauseDTO.getUploadId();
+        log.info("开始暂停上传，uploadId: {}", uploadId);
+
+        String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
+
+        try {
+            // 从Redis获取文件信息
+            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+
+            if (id == null) {
+                log.warn("文件上传信息不存在或已过期，uploadId: {}", uploadId);
+                throw new BusinessException("上传任务不存在或已过期");
+            }
+
+            // 更新数据库状态为暂停上传
+            fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.PAUSED.getStatus());
+            log.info("文件上传状态已更新为暂停，fileId: {}, fileName: {}", id, fileName);
+
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("暂停上传失败，uploadId: {}", uploadId, e);
+            throw new BusinessException("暂停上传失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public UploadInitVO resumeUpload(FileUploadPauseDTO fileUploadPauseDTO) {
+        String uploadId = fileUploadPauseDTO.getUploadId();
+        log.info("开始恢复上传，uploadId: {}", uploadId);
+
+        String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
+
+        try {
+            // 从Redis获取文件上传信息
+            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+            String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
+            String extension = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "extension");
+            Integer chunkTotal = (Integer) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
+
+            if (id == null || fileKey == null || chunkTotal == null) {
+                log.warn("文件上传信息不完整或已过期，uploadId: {}", uploadId);
+                throw new BusinessException("上传任务信息不完整或已过期");
+            }
+
+            // 检查当前文件状态是否允许恢复
+            FileUpload fileUpload = fileUploadMapper.selectById(id);
+            if (fileUpload == null) {
+                throw new BusinessException("文件记录不存在");
+            }
+
+            if (!fileUpload.getStatus().equals(UploadStatusEnum.PAUSED.getStatus()) &&
+                !fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus()) &&
+                !fileUpload.getStatus().equals(UploadStatusEnum.INITIALIZED.getStatus())) {
+                throw new BusinessException("当前文件状态不允许恢复上传");
+            }
+
+            // 检查OSS上传会话是否仍然有效
+            Map<Integer, String> uploadUrls = new HashMap<>();
+            long expireSeconds = ossConfig.getPresignedUrlExpiration();
+            Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
+
+            try {
+                // 验证uploadId是否仍然有效
+                ListPartsRequest listPartsRequest = new ListPartsRequest(ossConfig.getBucketName(), fileKey, uploadId);
+                ossClient.listParts(listPartsRequest);
+
+                // 如果uploadId有效，重新生成预签名URL
+                for (int i = 1; i <= chunkTotal; i++) {
+                    GeneratePresignedUrlRequest urlRequest =
+                            new GeneratePresignedUrlRequest(ossConfig.getBucketName(), fileKey, HttpMethod.PUT);
+                    urlRequest.setExpiration(expiration);
+
+                    Map<String, String> queryParams = new HashMap<>(2);
+                    queryParams.put("uploadId", uploadId);
+                    queryParams.put("partNumber", String.valueOf(i));
+                    urlRequest.setQueryParameter(queryParams);
+
+                    URL signedUrl = ossClient.generatePresignedUrl(urlRequest);
+                    uploadUrls.put(i, signedUrl.toString());
+                }
+
+                // 更新数据库状态为上传中
+                fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.UPLOADING.getStatus());
+                log.info("文件上传状态已更新为上传中，fileId: {}, fileName: {}", id, fileName);
+
+                // 更新Redis过期时间
+                stringRedisTemplate.expire(fileUploadInfoKey, expireSeconds, TimeUnit.SECONDS);
+
+                return new UploadInitVO(UploadStatusEnum.UPLOADING.getStatus(), uploadId, null, uploadUrls);
+
+            } catch (OSSException e) {
+                if ("NoSuchUpload".equals(e.getErrorCode())) {
+                    log.warn("OSS上传会话已过期，需要重新初始化，uploadId: {}", uploadId);
+                    throw new BusinessException("上传会话已过期，请重新初始化上传");
+                } else {
+                    log.error("检查OSS上传会话时发生错误，uploadId: {}, errorCode: {}, message: {}",
+                            uploadId, e.getErrorCode(), e.getMessage());
+                    throw new BusinessException("恢复上传失败: " + e.getMessage());
+                }
+            }
+
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("恢复上传失败，uploadId: {}", uploadId, e);
+            throw new BusinessException("恢复上传失败: " + e.getMessage());
+        }
     }
 
     /**

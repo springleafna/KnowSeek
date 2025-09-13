@@ -4,6 +4,7 @@ import com.springleaf.knowseek.model.dto.FileUploadCancelDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
 import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
 import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
+import com.springleaf.knowseek.model.dto.FileUploadPauseDTO;
 import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
@@ -43,4 +44,14 @@ public interface FileService {
      * 取消上传
      */
     void cancelUpload(FileUploadCancelDTO fileUploadCancelDTO);
+
+    /**
+     * 暂停上传
+     */
+    void pauseUpload(FileUploadPauseDTO fileUploadPauseDTO);
+
+    /**
+     * 恢复上传
+     */
+    UploadInitVO resumeUpload(FileUploadPauseDTO fileUploadPauseDTO);
 }

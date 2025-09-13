@@ -48,5 +48,10 @@ public interface FileUploadMapper {
      * 根据知识库 ID 查询文件列表
      */
     List<FileUpload> selectByKnowledgeBaseId(Long id);
+
+    /**
+     * 根据 ID 查询文件详情
+     */
+    FileUpload selectById(Long id);
 }
 

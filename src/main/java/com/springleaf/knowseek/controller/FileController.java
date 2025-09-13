@@ -61,14 +61,22 @@ public class FileController {
     public Result<UploadCompleteVO> completeChunkUpload(@RequestBody FileUploadCompleteDTO fileUploadCompleteDTO) {
         UploadCompleteVO uploadCompleteVO = fileService.completeChunkUpload(fileUploadCompleteDTO);
         return Result.success(uploadCompleteVO);
-    }
-
-    /**
+    }    /**
      * 暂停上传
      */
     @PostMapping("/pause")
-    public Result<?> pauseUpload(@RequestBody FileUploadPauseDTO fileUploadPauseDTO) {
+    public Result<Void> pauseUpload(@RequestBody @Valid FileUploadPauseDTO fileUploadPauseDTO) {
+        fileService.pauseUpload(fileUploadPauseDTO);
         return Result.success();
+    }
+
+    /**
+     * 恢复上传
+     */
+    @PostMapping("/resume")
+    public Result<UploadInitVO> resumeUpload(@RequestBody @Valid FileUploadPauseDTO fileUploadPauseDTO) {
+        UploadInitVO uploadInitVO = fileService.resumeUpload(fileUploadPauseDTO);
+        return Result.success(uploadInitVO);
     }
 
     /**
