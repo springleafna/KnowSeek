@@ -10,6 +10,8 @@ public class ChatResponseVO {
     private String message;
     
     private String conversationId;
+
+    private Long sessionId;
     
     private LocalDateTime timestamp;
     

@@ -152,7 +152,6 @@ public class SessionServiceImpl implements SessionService {
         }
         SessionVO vo = new SessionVO();
         BeanUtils.copyProperties(session, vo);
-        // TODO: 可以在这里设置最后一条消息等额外信息
         return vo;
     }
 }

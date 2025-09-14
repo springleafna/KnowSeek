@@ -97,8 +97,6 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         if (entity == null) {
             return null;
         }
-
-        // 创建 VO 实例并使用 BeanUtils 复制属性
         KnowledgeBaseVO vo = new KnowledgeBaseVO();
         BeanUtils.copyProperties(entity, vo);
 

@@ -15,7 +15,7 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/messages")
+@RequestMapping("/chat/messages")
 public class AiMessageController {
 
     private final AiMessageService aiMessageService;

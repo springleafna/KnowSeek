@@ -3,10 +3,13 @@ package com.springleaf.knowseek.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.ChatRequestDTO;
-import com.springleaf.knowseek.model.dto.CreateConversationDTO;
+import com.springleaf.knowseek.model.dto.SessionCreateDTO;
+import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
 import com.springleaf.knowseek.model.vo.ChatResponseVO;
-import com.springleaf.knowseek.model.vo.ConversationVO;
+import com.springleaf.knowseek.model.vo.SessionVO;
+import com.springleaf.knowseek.service.AiMessageService;
 import com.springleaf.knowseek.service.ChatService;
+import com.springleaf.knowseek.service.SessionService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +31,8 @@ import java.util.List;
 public class ChatController {
 
     private final ChatService chatService;
+    private final SessionService sessionService;
+    private final AiMessageService aiMessageService;
 
     @PostMapping("/send")
     public Result<ChatResponseVO> chat(@RequestBody @Valid ChatRequestDTO requestDTO) {
@@ -45,58 +50,66 @@ public class ChatController {
         return chatService.streamChat(requestDTO);
     }
 
-    @DeleteMapping("/conversation/{conversationId}")
-    public Result<String> clearConversation(@PathVariable String conversationId) {
+    @DeleteMapping("/sessions/{sessionId}/messages")
+    public Result<String> clearSessionMessages(@PathVariable Long sessionId) {
         try {
-            chatService.clearConversation(conversationId);
-            return Result.success("对话历史已清除");
+            aiMessageService.deleteMessagesBySessionId(sessionId);
+            return Result.success("会话消息已清除");
         } catch (Exception e) {
-            log.error("清除对话历史失败", e);
-            return Result.error("清除对话历史失败：" + e.getMessage());
+            log.error("清除会话消息失败", e);
+            return Result.error("清除会话消息失败：" + e.getMessage());
         }
     }
     
-    // 会话管理相关接口
-    @GetMapping("/conversations")
-    public Result<List<ConversationVO>> getUserConversations() {
+    // 会话管理相关接口 - 使用数据库存储
+    @GetMapping("/sessions")
+    public Result<List<SessionVO>> getUserSessions() {
         try {
-            List<ConversationVO> conversations = chatService.getUserConversations();
-            return Result.success(conversations);
+            List<SessionVO> sessions = sessionService.getCurrentUserSessions();
+            return Result.success(sessions);
         } catch (Exception e) {
             log.error("获取用户会话列表失败", e);
             return Result.error("获取会话列表失败：" + e.getMessage());
         }
     }
-    
-    @PostMapping("/conversations")
-    public Result<ConversationVO> createConversation(@RequestBody @Valid CreateConversationDTO createDTO) {
+
+    @PostMapping("/sessions")
+    public Result<SessionVO> createSession(@RequestBody @Valid SessionCreateDTO createDTO) {
         try {
-            ConversationVO conversation = chatService.createConversation(createDTO);
-            return Result.success(conversation);
+            SessionVO session = sessionService.createSession(createDTO);
+            return Result.success(session);
         } catch (Exception e) {
             log.error("创建会话失败", e);
             return Result.error("创建会话失败：" + e.getMessage());
         }
     }
-    
-    @GetMapping("/conversations/{conversationId}")
-    public Result<ConversationVO> getConversation(@PathVariable String conversationId) {
+
+    @GetMapping("/sessions/{sessionId}")
+    public Result<SessionVO> getSession(@PathVariable Long sessionId) {
         try {
-            ConversationVO conversation = chatService.getConversation(conversationId);
-            if (conversation == null) {
-                return Result.error("会话不存在");
-            }
-            return Result.success(conversation);
+            SessionVO session = sessionService.getSessionById(sessionId);
+            return Result.success(session);
         } catch (Exception e) {
             log.error("获取会话信息失败", e);
             return Result.error("获取会话信息失败：" + e.getMessage());
         }
     }
-    
-    @DeleteMapping("/conversations/{conversationId}")
-    public Result<String> deleteConversation(@PathVariable String conversationId) {
+
+    @PutMapping("/sessions")
+    public Result<Boolean> updateSession(@RequestBody @Valid SessionUpdateDTO updateDTO) {
         try {
-            chatService.deleteConversation(conversationId);
+            boolean success = sessionService.updateSession(updateDTO);
+            return Result.success(success);
+        } catch (Exception e) {
+            log.error("更新会话失败", e);
+            return Result.error("更新会话失败：" + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public Result<String> deleteSession(@PathVariable Long sessionId) {
+        try {
+            sessionService.deleteSession(sessionId);
             return Result.success("会话已删除");
         } catch (Exception e) {
             log.error("删除会话失败", e);
