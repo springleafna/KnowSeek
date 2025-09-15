@@ -7,13 +7,10 @@ import com.springleaf.knowseek.model.dto.SessionCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
 import com.springleaf.knowseek.model.vo.ChatResponseVO;
 import com.springleaf.knowseek.model.vo.SessionVO;
-import com.springleaf.knowseek.service.AiMessageService;
 import com.springleaf.knowseek.service.ChatService;
 import com.springleaf.knowseek.service.SessionService;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +29,6 @@ public class ChatController {
 
     private final ChatService chatService;
     private final SessionService sessionService;
-    private final AiMessageService aiMessageService;
 
     @PostMapping("/send")
     public Result<ChatResponseVO> chat(@RequestBody @Valid ChatRequestDTO requestDTO) {
@@ -50,17 +46,6 @@ public class ChatController {
         return chatService.streamChat(requestDTO);
     }
 
-    @DeleteMapping("/sessions/{sessionId}/messages")
-    public Result<String> clearSessionMessages(@PathVariable Long sessionId) {
-        try {
-            aiMessageService.deleteMessagesBySessionId(sessionId);
-            return Result.success("会话消息已清除");
-        } catch (Exception e) {
-            log.error("清除会话消息失败", e);
-            return Result.error("清除会话消息失败：" + e.getMessage());
-        }
-    }
-    
     // 会话管理相关接口 - 使用数据库存储
     @GetMapping("/sessions")
     public Result<List<SessionVO>> getUserSessions() {
@@ -73,7 +58,7 @@ public class ChatController {
         }
     }
 
-    @PostMapping("/sessions")
+    @PostMapping("/createSession")
     public Result<SessionVO> createSession(@RequestBody @Valid SessionCreateDTO createDTO) {
         try {
             SessionVO session = sessionService.createSession(createDTO);
@@ -84,7 +69,7 @@ public class ChatController {
         }
     }
 
-    @GetMapping("/sessions/{sessionId}")
+    @GetMapping("/getSession/{sessionId}")
     public Result<SessionVO> getSession(@PathVariable Long sessionId) {
         try {
             SessionVO session = sessionService.getSessionById(sessionId);
@@ -95,7 +80,7 @@ public class ChatController {
         }
     }
 
-    @PutMapping("/sessions")
+    @PutMapping("/updateSession")
     public Result<Boolean> updateSession(@RequestBody @Valid SessionUpdateDTO updateDTO) {
         try {
             boolean success = sessionService.updateSession(updateDTO);
@@ -106,7 +91,7 @@ public class ChatController {
         }
     }
 
-    @DeleteMapping("/sessions/{sessionId}")
+    @DeleteMapping("/deleteSession/{sessionId}")
     public Result<String> deleteSession(@PathVariable Long sessionId) {
         try {
             sessionService.deleteSession(sessionId);
