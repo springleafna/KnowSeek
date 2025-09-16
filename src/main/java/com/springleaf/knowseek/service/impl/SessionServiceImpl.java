@@ -7,7 +7,7 @@ import com.springleaf.knowseek.model.dto.SessionCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
 import com.springleaf.knowseek.model.entity.Session;
 import com.springleaf.knowseek.model.vo.SessionVO;
-import com.springleaf.knowseek.service.AiMessageService;
+import com.springleaf.knowseek.service.MessageService;
 import com.springleaf.knowseek.service.SessionService;
 import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
@@ -28,7 +28,7 @@ public class SessionServiceImpl implements SessionService {
     private SessionMapper sessionMapper;
 
     @Resource
-    private AiMessageService aiMessageService;
+    private MessageService messageService;
 
     @Override
     public SessionVO createSession(SessionCreateDTO createDTO) {
@@ -86,9 +86,7 @@ public class SessionServiceImpl implements SessionService {
     }
 
     @Override
-    public boolean updateSession(SessionUpdateDTO updateDTO) {
-        // 获取当前登录用户ID
-        Long userId = StpUtil.getLoginIdAsLong();
+    public boolean updateSession(SessionUpdateDTO updateDTO, Long userId) {
 
         // 查询会话
         Session session = sessionMapper.selectById(updateDTO.getId());
@@ -135,7 +133,7 @@ public class SessionServiceImpl implements SessionService {
         }
 
         // 删除会话的所有消息
-        aiMessageService.deleteMessagesBySessionId(id);
+        messageService.deleteMessagesBySessionId(id);
 
         // 删除会话
         return sessionMapper.deleteById(id) > 0;

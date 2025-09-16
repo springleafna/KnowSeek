@@ -8,12 +8,12 @@ import java.time.LocalDateTime;
  * AI消息VO
  */
 @Data
-public class AiMessageVO {
+public class MessageVO {
 
     /**
      * 消息唯一ID
      */
-    private Long messageId;
+    private Long id;
 
     /**
      * 所属会话ID

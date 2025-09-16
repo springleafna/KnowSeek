@@ -40,8 +40,4 @@ public class SessionVO {
      */
     private String metadata;
 
-    /**
-     * 最新一条消息内容（可选）
-     */
-    private String lastMessage;
 }

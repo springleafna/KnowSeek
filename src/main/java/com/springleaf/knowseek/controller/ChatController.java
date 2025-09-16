@@ -1,13 +1,16 @@
 package com.springleaf.knowseek.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.ChatRequestDTO;
 import com.springleaf.knowseek.model.dto.SessionCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
 import com.springleaf.knowseek.model.vo.ChatResponseVO;
+import com.springleaf.knowseek.model.vo.MessageVO;
 import com.springleaf.knowseek.model.vo.SessionVO;
 import com.springleaf.knowseek.service.ChatService;
+import com.springleaf.knowseek.service.MessageService;
 import com.springleaf.knowseek.service.SessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +32,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final SessionService sessionService;
+    private final MessageService messageService;
 
     @PostMapping("/send")
     public Result<ChatResponseVO> chat(@RequestBody @Valid ChatRequestDTO requestDTO) {
@@ -83,7 +87,8 @@ public class ChatController {
     @PutMapping("/updateSession")
     public Result<Boolean> updateSession(@RequestBody @Valid SessionUpdateDTO updateDTO) {
         try {
-            boolean success = sessionService.updateSession(updateDTO);
+            Long currentUserId = StpUtil.getLoginIdAsLong();
+            boolean success = sessionService.updateSession(updateDTO, currentUserId);
             return Result.success(success);
         } catch (Exception e) {
             log.error("更新会话失败", e);
@@ -99,6 +104,17 @@ public class ChatController {
         } catch (Exception e) {
             log.error("删除会话失败", e);
             return Result.error("删除会话失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/messages/{sessionId}")
+    public Result<List<MessageVO>> getSessionMessages(@PathVariable Long sessionId) {
+        try {
+            List<MessageVO> messages = messageService.getMessagesBySessionId(sessionId);
+            return Result.success(messages);
+        } catch (Exception e) {
+            log.error("获取会话消息记录失败", e);
+            return Result.error("获取消息记录失败：" + e.getMessage());
         }
     }
 }

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.springleaf.knowseek.mapper.AiMessageMapper">
+<mapper namespace="com.springleaf.knowseek.mapper.MessageMapper">
 
     <!-- 通用查询映射结果 -->
-    <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.AiMessage">
+    <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.Message">
         <id column="id" property="id" />
         <result column="session_id" property="sessionId" />
         <result column="role" property="role" />
@@ -18,7 +18,7 @@
     </sql>
 
     <!-- 插入消息 -->
-    <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.AiMessage" useGeneratedKeys="true" keyProperty="messageId">
+    <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.Message" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO tb_message (session_id, role, content, metadata)
         VALUES (#{sessionId}, #{role}, #{content}, #{metadata})
     </insert>

@@ -36,7 +36,7 @@ public interface SessionService {
      * @param updateDTO 更新会话DTO
      * @return 是否成功
      */
-    boolean updateSession(SessionUpdateDTO updateDTO);
+    boolean updateSession(SessionUpdateDTO updateDTO, Long userId);
 
     /**
      * 删除会话

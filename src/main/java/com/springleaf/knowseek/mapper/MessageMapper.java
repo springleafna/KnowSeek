@@ -1,34 +1,34 @@
 package com.springleaf.knowseek.mapper;
 
-import com.springleaf.knowseek.model.entity.AiMessage;
+import com.springleaf.knowseek.model.entity.Message;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
 @Mapper
-public interface AiMessageMapper {
+public interface MessageMapper {
 
     /**
      * 插入消息
-     * @param aiMessage 消息实体
+     * @param message 消息实体
      * @return 影响行数
      */
-    int insert(AiMessage aiMessage);
+    int insert(Message message);
 
     /**
      * 根据ID查询消息
      * @param messageId 消息ID
      * @return 消息实体
      */
-    AiMessage selectById(Long messageId);
+    Message selectById(Long messageId);
 
     /**
      * 根据会话ID查询消息列表
      * @param sessionId 会话ID
      * @return 消息列表
      */
-    List<AiMessage> selectBySessionId(Long sessionId);
+    List<Message> selectBySessionId(Long sessionId);
 
     /**
      * 根据会话ID和角色查询消息列表
@@ -36,7 +36,7 @@ public interface AiMessageMapper {
      * @param role 角色
      * @return 消息列表
      */
-    List<AiMessage> selectBySessionIdAndRole(@Param("sessionId") Long sessionId, @Param("role") String role);
+    List<Message> selectBySessionIdAndRole(@Param("sessionId") Long sessionId, @Param("role") String role);
 
     /**
      * 删除会话的所有消息

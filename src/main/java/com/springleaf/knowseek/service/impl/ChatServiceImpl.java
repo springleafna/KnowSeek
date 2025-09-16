@@ -2,14 +2,14 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
-import com.springleaf.knowseek.model.dto.AiMessageCreateDTO;
+import com.springleaf.knowseek.model.dto.MessageCreateDTO;
 import com.springleaf.knowseek.model.dto.ChatRequestDTO;
 import com.springleaf.knowseek.model.dto.SessionCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
-import com.springleaf.knowseek.model.vo.AiMessageVO;
+import com.springleaf.knowseek.model.vo.MessageVO;
 import com.springleaf.knowseek.model.vo.ChatResponseVO;
 import com.springleaf.knowseek.model.vo.SessionVO;
-import com.springleaf.knowseek.service.AiMessageService;
+import com.springleaf.knowseek.service.MessageService;
 import com.springleaf.knowseek.service.ChatService;
 import com.springleaf.knowseek.service.SessionService;
 import lombok.RequiredArgsConstructor;
@@ -36,13 +36,13 @@ public class ChatServiceImpl implements ChatService {
 
     private final DashScopeChatModel chatModel;
     private final SessionService sessionService;
-    private final AiMessageService aiMessageService;
+    private final MessageService messageService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ChatResponseVO chat(ChatRequestDTO requestDTO) {
         try {
-            Long userId = StpUtil.getLoginIdAsLong();
+            Long currentUserId = StpUtil.getLoginIdAsLong();
 
             // 获取或创建会话
             SessionVO sessionVO = getOrCreateSession(requestDTO.getSessionId());
@@ -56,7 +56,7 @@ public class ChatServiceImpl implements ChatService {
             messages.add(new UserMessage(requestDTO.getMessage()));
 
             // 保存用户消息到数据库
-            saveUserMessage(sessionId, requestDTO.getMessage());
+            saveUserMessage(sessionId, requestDTO.getMessage(), currentUserId);
 
             // 调用AI获取回复
             Prompt prompt = new Prompt(messages);
@@ -64,11 +64,11 @@ public class ChatServiceImpl implements ChatService {
             String assistantResponse = response.getResult().getOutput().getText();
 
             // 保存AI回复到数据库
-            saveAssistantMessage(sessionId, assistantResponse);
+            saveAssistantMessage(sessionId, assistantResponse, currentUserId);
 
             // 如果是用户的第一次提问，生成会话标题
             if (isFirstMessage) {
-                generateAndUpdateSessionTitle(sessionId, requestDTO.getMessage());
+                generateAndUpdateSessionTitle(sessionId, requestDTO.getMessage(), currentUserId);
             }
 
             // 构建响应
@@ -91,7 +91,7 @@ public class ChatServiceImpl implements ChatService {
         SseEmitter emitter = new SseEmitter(60000L);
 
         try {
-            Long userId = StpUtil.getLoginIdAsLong();
+            Long currentUserId = StpUtil.getLoginIdAsLong();
 
             // 获取或创建会话
             SessionVO sessionVO = getOrCreateSession(requestDTO.getSessionId());
@@ -105,7 +105,7 @@ public class ChatServiceImpl implements ChatService {
             messages.add(new UserMessage(requestDTO.getMessage()));
 
             // 保存用户消息到数据库
-            saveUserMessage(sessionId, requestDTO.getMessage());
+            saveUserMessage(sessionId, requestDTO.getMessage(), currentUserId);
 
             // 调用AI流式获取回复
             Prompt prompt = new Prompt(messages);
@@ -138,11 +138,11 @@ public class ChatServiceImpl implements ChatService {
                 },
                 () -> {
                     // 保存完整的AI回复到数据库
-                    saveAssistantMessage(sessionId, fullResponse.toString());
+                    saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
 
                     // 如果是用户的第一次提问，生成会话标题
                     if (isFirstMessage) {
-                        generateAndUpdateSessionTitle(sessionId, requestDTO.getMessage());
+                        generateAndUpdateSessionTitle(sessionId, requestDTO.getMessage(), currentUserId);
                     }
 
                     emitter.complete();
@@ -169,10 +169,10 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private List<Message> getSessionMessages(Long sessionId) {
-        List<AiMessageVO> messageVOs = aiMessageService.getMessagesBySessionId(sessionId);
+        List<MessageVO> messageVOs = messageService.getMessagesBySessionId(sessionId);
         List<Message> messages = new ArrayList<>();
 
-        for (AiMessageVO messageVO : messageVOs) {
+        for (MessageVO messageVO : messageVOs) {
             if ("user".equals(messageVO.getRole())) {
                 messages.add(new UserMessage(messageVO.getContent()));
             } else if ("assistant".equals(messageVO.getRole())) {
@@ -183,20 +183,20 @@ public class ChatServiceImpl implements ChatService {
         return messages;
     }
 
-    private void saveUserMessage(Long sessionId, String content) {
-        AiMessageCreateDTO createDTO = new AiMessageCreateDTO();
+    private void saveUserMessage(Long sessionId, String content, Long currentUserId) {
+        MessageCreateDTO createDTO = new MessageCreateDTO();
         createDTO.setSessionId(sessionId);
         createDTO.setRole("user");
         createDTO.setContent(content);
-        aiMessageService.createMessage(createDTO);
+        messageService.createMessage(createDTO, currentUserId);
     }
 
-    private void saveAssistantMessage(Long sessionId, String content) {
-        AiMessageCreateDTO createDTO = new AiMessageCreateDTO();
+    private void saveAssistantMessage(Long sessionId, String content, Long currentUserId) {
+        MessageCreateDTO createDTO = new MessageCreateDTO();
         createDTO.setSessionId(sessionId);
         createDTO.setRole("assistant");
         createDTO.setContent(content);
-        aiMessageService.createMessage(createDTO);
+        messageService.createMessage(createDTO, currentUserId);
     }
 
     /**
@@ -204,7 +204,7 @@ public class ChatServiceImpl implements ChatService {
      * @param sessionId 会话ID
      * @param userMessage 用户的第一次提问
      */
-    private void generateAndUpdateSessionTitle(Long sessionId, String userMessage) {
+    private void generateAndUpdateSessionTitle(Long sessionId, String userMessage, Long userId) {
         try {
             // 构建标题生成的提示词
             String titlePrompt = String.format(
@@ -225,15 +225,15 @@ public class ChatServiceImpl implements ChatService {
             String generatedTitle = response.getResult().getOutput().getText().trim();
 
             // 限制标题长度，确保不超过12个字符
-            if (generatedTitle.length() > 12) {
-                generatedTitle = generatedTitle.substring(0, 12);
+            if (generatedTitle.length() > 15) {
+                generatedTitle = generatedTitle.substring(0, 15) + "...";
             }
 
             // 更新会话标题
             SessionUpdateDTO updateDTO = new SessionUpdateDTO();
             updateDTO.setId(sessionId);
             updateDTO.setSessionName(generatedTitle);
-            sessionService.updateSession(updateDTO);
+            sessionService.updateSession(updateDTO, userId);
 
             log.info("已为会话 {} 生成标题: {}", sessionId, generatedTitle);
         } catch (Exception e) {
@@ -245,7 +245,7 @@ public class ChatServiceImpl implements ChatService {
             SessionUpdateDTO updateDTO = new SessionUpdateDTO();
             updateDTO.setId(sessionId);
             updateDTO.setSessionName(fallbackTitle);
-            sessionService.updateSession(updateDTO);
+            sessionService.updateSession(updateDTO, userId);
         }
     }
 }

@@ -8,7 +8,7 @@ import lombok.Data;
  * 创建AI消息DTO
  */
 @Data
-public class AiMessageCreateDTO {
+public class MessageCreateDTO {
 
     /**
      * 所属会话ID

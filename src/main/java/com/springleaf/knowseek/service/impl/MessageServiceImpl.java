@@ -2,13 +2,13 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.exception.BusinessException;
-import com.springleaf.knowseek.mapper.AiMessageMapper;
+import com.springleaf.knowseek.mapper.MessageMapper;
 import com.springleaf.knowseek.mapper.SessionMapper;
-import com.springleaf.knowseek.model.dto.AiMessageCreateDTO;
-import com.springleaf.knowseek.model.entity.AiMessage;
+import com.springleaf.knowseek.model.dto.MessageCreateDTO;
+import com.springleaf.knowseek.model.entity.Message;
 import com.springleaf.knowseek.model.entity.Session;
-import com.springleaf.knowseek.model.vo.AiMessageVO;
-import com.springleaf.knowseek.service.AiMessageService;
+import com.springleaf.knowseek.model.vo.MessageVO;
+import com.springleaf.knowseek.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -22,16 +22,14 @@ import java.util.stream.Collectors;
  */
 @RequiredArgsConstructor
 @Service
-public class AiMessageServiceImpl implements AiMessageService {
+public class MessageServiceImpl implements MessageService {
 
-    private final AiMessageMapper aiMessageMapper;
+    private final MessageMapper messageMapper;
 
     private final SessionMapper sessionMapper;
 
     @Override
-    public AiMessageVO createMessage(AiMessageCreateDTO createDTO) {
-        // 获取当前登录用户ID
-        Long userId = StpUtil.getLoginIdAsLong();
+    public MessageVO createMessage(MessageCreateDTO createDTO, Long userId) {
 
         // 验证会话是否存在且属于当前用户
         Session session = sessionMapper.selectById(createDTO.getSessionId());
@@ -43,7 +41,7 @@ public class AiMessageServiceImpl implements AiMessageService {
         }
 
         // 创建消息实体
-        AiMessage message = new AiMessage();
+        Message message = new Message();
         message.setSessionId(createDTO.getSessionId());
         message.setRole(createDTO.getRole());
         message.setContent(createDTO.getContent());
@@ -51,7 +49,7 @@ public class AiMessageServiceImpl implements AiMessageService {
         message.setCreatedAt(LocalDateTime.now());
 
         // 插入数据库
-        aiMessageMapper.insert(message);
+        messageMapper.insert(message);
 
         // 更新会话的最后活跃时间
         session.setUpdatedAt(LocalDateTime.now());
@@ -62,12 +60,12 @@ public class AiMessageServiceImpl implements AiMessageService {
     }
 
     @Override
-    public AiMessageVO getMessageById(Long messageId) {
+    public MessageVO getMessageById(Long messageId) {
         // 获取当前登录用户ID
         Long userId = StpUtil.getLoginIdAsLong();
 
         // 查询消息
-        AiMessage message = aiMessageMapper.selectById(messageId);
+        Message message = messageMapper.selectById(messageId);
         if (message == null) {
             throw new BusinessException("消息不存在");
         }
@@ -83,7 +81,7 @@ public class AiMessageServiceImpl implements AiMessageService {
     }
 
     @Override
-    public List<AiMessageVO> getMessagesBySessionId(Long sessionId) {
+    public List<MessageVO> getMessagesBySessionId(Long sessionId) {
         // 获取当前登录用户ID
         Long userId = StpUtil.getLoginIdAsLong();
 
@@ -97,7 +95,7 @@ public class AiMessageServiceImpl implements AiMessageService {
         }
 
         // 查询会话的所有消息
-        List<AiMessage> messages = aiMessageMapper.selectBySessionId(sessionId);
+        List<Message> messages = messageMapper.selectBySessionId(sessionId);
 
         // 转换为VO列表返回
         return messages.stream()
@@ -120,7 +118,7 @@ public class AiMessageServiceImpl implements AiMessageService {
         }
 
         // 删除会话的所有消息
-        return aiMessageMapper.deleteBySessionId(sessionId) >= 0;
+        return messageMapper.deleteBySessionId(sessionId) >= 0;
     }
 
     /**
@@ -128,11 +126,11 @@ public class AiMessageServiceImpl implements AiMessageService {
      * @param message 消息实体
      * @return 消息VO
      */
-    private AiMessageVO convertToVO(AiMessage message) {
+    private MessageVO convertToVO(Message message) {
         if (message == null) {
             return null;
         }
-        AiMessageVO vo = new AiMessageVO();
+        MessageVO vo = new MessageVO();
         BeanUtils.copyProperties(message, vo);
         return vo;
     }
