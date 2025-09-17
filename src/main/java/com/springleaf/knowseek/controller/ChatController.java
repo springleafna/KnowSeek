@@ -34,6 +34,9 @@ public class ChatController {
     private final SessionService sessionService;
     private final MessageService messageService;
 
+    /**
+     * 普通AI对话
+     */
     @PostMapping("/send")
     public Result<ChatResponseVO> chat(@RequestBody @Valid ChatRequestDTO requestDTO) {
         try {
@@ -45,12 +48,17 @@ public class ChatController {
         }
     }
 
+    /**
+     * AI流式对话
+     */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamChat(@RequestBody @Valid ChatRequestDTO requestDTO) {
         return chatService.streamChat(requestDTO);
     }
 
-    // 会话管理相关接口 - 使用数据库存储
+    /**
+     * 获取用户会话列表
+     */
     @GetMapping("/sessions")
     public Result<List<SessionVO>> getUserSessions() {
         try {
@@ -59,28 +67,6 @@ public class ChatController {
         } catch (Exception e) {
             log.error("获取用户会话列表失败", e);
             return Result.error("获取会话列表失败：" + e.getMessage());
-        }
-    }
-
-    @PostMapping("/createSession")
-    public Result<SessionVO> createSession(@RequestBody @Valid SessionCreateDTO createDTO) {
-        try {
-            SessionVO session = sessionService.createSession(createDTO);
-            return Result.success(session);
-        } catch (Exception e) {
-            log.error("创建会话失败", e);
-            return Result.error("创建会话失败：" + e.getMessage());
-        }
-    }
-
-    @GetMapping("/getSession/{sessionId}")
-    public Result<SessionVO> getSession(@PathVariable Long sessionId) {
-        try {
-            SessionVO session = sessionService.getSessionById(sessionId);
-            return Result.success(session);
-        } catch (Exception e) {
-            log.error("获取会话信息失败", e);
-            return Result.error("获取会话信息失败：" + e.getMessage());
         }
     }
 
@@ -96,6 +82,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * 删除会话
+     */
     @DeleteMapping("/deleteSession/{sessionId}")
     public Result<String> deleteSession(@PathVariable Long sessionId) {
         try {
@@ -107,6 +96,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * 获取会话历史记录
+     */
     @GetMapping("/messages/{sessionId}")
     public Result<List<MessageVO>> getSessionMessages(@PathVariable Long sessionId) {
         try {
