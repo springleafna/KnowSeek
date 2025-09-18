@@ -70,6 +70,20 @@ public class ChatController {
         }
     }
 
+    /**
+     * 获取对话信息
+     */
+    @GetMapping("/getSession/{sessionId}")
+    public Result<SessionVO> getSession(@PathVariable Long sessionId) {
+        try {
+            SessionVO session = sessionService.getSessionById(sessionId);
+            return Result.success(session);
+        } catch (Exception e) {
+            log.error("获取会话信息失败", e);
+            return Result.error("获取会话信息失败：" + e.getMessage());
+        }
+    }
+
     @PutMapping("/updateSession")
     public Result<Boolean> updateSession(@RequestBody @Valid SessionUpdateDTO updateDTO) {
         try {

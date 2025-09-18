@@ -240,6 +240,7 @@ public class FileUtil {
         // 检查是否为支持的文档类型
         if (SUPPORTED_DOCUMENT_EXTENSIONS.contains(extension)) {
             log.info("文件类型验证通过: fileName={}, extension={}, fileType={}", fileName, extension, fileType);
+            return;
         }
 
         // 检查是否为明确不支持的类型

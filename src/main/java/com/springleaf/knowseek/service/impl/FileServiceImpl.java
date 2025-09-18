@@ -200,7 +200,11 @@ public class FileServiceImpl implements FileService {
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             if (chunkIndex == 1) {
                 // 上传第一个分片时将数据库文件上传状态设置为上传中
-                Long fileId = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+                String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+                if (idStr == null) {
+                    throw new BusinessException("上传文件ID不存在");
+                }
+                Long fileId = Long.valueOf(idStr);
                 fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.UPLOADING.getStatus());
             }
 
@@ -240,7 +244,11 @@ public class FileServiceImpl implements FileService {
             String fileUploadInfoKey = String.format(UploadRedisKeyConstant.FILE_UPLOAD_INIT_KEY, uploadId);
 
             // 1. 获取文件信息
-            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            if (idStr == null) {
+                throw new BusinessException("上传文件ID不存在");
+            }
+            Long id = Long.valueOf(idStr);
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             String extension = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "extension");
@@ -329,13 +337,13 @@ public class FileServiceImpl implements FileService {
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
 
             // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
-            /*FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage
+            FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage
                     .builder()
                     .location(location)
                     .fileName(fileName)
                     .extension(extension)
                     .build();
-            eventPublisher.publish(fileVectorizeEvent.topic(), fileVectorizeEvent.buildEventMessage(fileVectorizeMessage));*/
+            eventPublisher.publish(fileVectorizeEvent.topic(), fileVectorizeEvent.buildEventMessage(fileVectorizeMessage));
             return new UploadCompleteVO(false, null, location);
         } catch (Exception e) {
             log.error("分片合并失败", e);
@@ -388,12 +396,15 @@ public class FileServiceImpl implements FileService {
 
         try {
             // 从Redis获取文件上传信息
-            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
-            String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
+            String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            if (idStr == null) {
+                throw new BusinessException("上传文件ID不存在");
+            }
+            Long id = Long.valueOf(idStr);            String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             String chunkTotal = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
 
-            if (id == null || fileKey == null) {
+            if (fileKey == null) {
                 log.warn("文件上传信息不存在或已过期，uploadId: {}", uploadId);
                 throw new BusinessException("上传任务不存在或已过期");
             }
@@ -451,13 +462,12 @@ public class FileServiceImpl implements FileService {
 
         try {
             // 从Redis获取文件信息
-            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
-            String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
-
-            if (id == null) {
-                log.warn("文件上传信息不存在或已过期，uploadId: {}", uploadId);
-                throw new BusinessException("上传任务不存在或已过期");
+            String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            if (idStr == null) {
+                throw new BusinessException("上传文件ID不存在");
             }
+            Long id = Long.valueOf(idStr);
+            String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
 
             // 更新数据库状态为暂停上传
             fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.PAUSED.getStatus());
@@ -480,12 +490,16 @@ public class FileServiceImpl implements FileService {
 
         try {
             // 从Redis获取文件上传信息
-            Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            String idStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
+            if (idStr == null) {
+                throw new BusinessException("上传文件ID不存在");
+            }
+            Long id = Long.valueOf(idStr);
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
             Integer chunkTotal = (Integer) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
 
-            if (id == null || fileKey == null || chunkTotal == null) {
+            if (fileKey == null || chunkTotal == null) {
                 log.warn("文件上传信息不完整或已过期，uploadId: {}", uploadId);
                 throw new BusinessException("上传任务信息不完整或已过期");
             }
