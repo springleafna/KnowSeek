@@ -84,6 +84,17 @@ public class ChatController {
         }
     }
 
+    @PostMapping("/createSession")
+    public Result<SessionVO> createSession(@RequestBody @Valid SessionCreateDTO createDTO) {
+        try {
+            SessionVO session = sessionService.createSession(createDTO);
+            return Result.success(session);
+        } catch (Exception e) {
+            log.error("创建会话失败", e);
+            return Result.error("创建会话失败：" + e.getMessage());
+        }
+    }
+
     @PutMapping("/updateSession")
     public Result<Boolean> updateSession(@RequestBody @Valid SessionUpdateDTO updateDTO) {
         try {

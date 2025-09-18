@@ -113,6 +113,33 @@ public class ChatServiceImpl implements ChatService {
 
             StringBuilder fullResponse = new StringBuilder();
 
+            // 添加连接超时和错误处理
+            emitter.onTimeout(() -> {
+                // 连接超时时也保存已接收的内容
+                if (!fullResponse.isEmpty()) {
+                    saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
+                }
+            });
+
+            emitter.onError((throwable) -> {
+                // 连接错误时也保存已接收的内容
+                if (!fullResponse.isEmpty()) {
+                    saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
+                }
+            });
+
+            emitter.onCompletion(() -> {
+                // 连接完成时保存内容（包括用户主动断开）
+                if (!fullResponse.isEmpty()) {
+                    saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
+
+                    // 如果是用户的第一次提问，生成会话标题
+                    if (isFirstMessage) {
+                        generateAndUpdateSessionTitle(sessionId, requestDTO.getMessage(), currentUserId);
+                    }
+                }
+            });
+
             responseFlux.subscribe(
                 chatResponse -> {
                     try {
@@ -134,19 +161,13 @@ public class ChatServiceImpl implements ChatService {
                 },
                 error -> {
                     log.error("流式对话失败", error);
+                    // 错误时也尝试保存已有内容
+                    if (!fullResponse.isEmpty()) {
+                        saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
+                    }
                     emitter.completeWithError(error);
                 },
-                () -> {
-                    // 保存完整的AI回复到数据库
-                    saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
-
-                    // 如果是用户的第一次提问，生成会话标题
-                    if (isFirstMessage) {
-                        generateAndUpdateSessionTitle(sessionId, requestDTO.getMessage(), currentUserId);
-                    }
-
-                    emitter.complete();
-                }
+                    emitter::complete
             );
         } catch (Exception e) {
             log.error("启动流式对话失败", e);
