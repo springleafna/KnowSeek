@@ -9,9 +9,13 @@ import com.springleaf.knowseek.service.impl.EsStorageService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.annotation.Argument;
 import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -54,8 +58,16 @@ public class FileVectorizeConsumer {
             "txt", "md", "xml", "html", "htm", "json", "csv"
     ));
 
-    @RabbitListener(queuesToDeclare = @Queue(value = "file.processing.vectorize"))
-    public void listener(String message) throws Exception {
+    @RabbitListener(queuesToDeclare = @Queue(
+            value = "file.processing.vectorize",
+            durable = "true",
+            arguments = {
+                    @Argument(name = "x-dead-letter-exchange", value = "file.processing.dlx"),
+                    @Argument(name = "x-dead-letter-routing-key", value = "file.processing.vectorize.failed")
+            }
+    ))
+    public void listener(String message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
+                        @Header(value = "x-death", required = false) java.util.List<java.util.Map<String, Object>> xDeath) {
         long startTime = System.currentTimeMillis();
         try {
             log.info("[消费者] 文件向量化任务正式执行 - 执行消费逻辑，topic: {}, message: {}", topic, message);
@@ -80,8 +92,15 @@ public class FileVectorizeConsumer {
             
         } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - startTime;
-            log.error("监听[消费者] 文件向量化任务，消费失败 topic: {} message: {}，耗时: {} ms", topic, message, processingTime, e);
-            throw e;
+            int retryCount = getRetryCount(xDeath);
+            log.error("监听[消费者] 文件向量化任务，消费失败 topic: {} message: {}，耗时: {} ms，重试次数: {}",
+                     topic, message, processingTime, retryCount, e);
+
+            // 记录失败信息到数据库或日志系统（可选）
+            recordFailureInfo(message, e, retryCount);
+
+            // 不再重新抛出异常，让Spring Boot的重试机制接管
+            // 当达到最大重试次数时，消息会自动进入死信队列
         }
     }
 
@@ -459,9 +478,43 @@ public class FileVectorizeConsumer {
         log.info("FileVectorizeConsumer资源清理完成");
     }
 
-        /**
-         * 文本块和向量的包装类
-         */
-        private record ChunkWithVector(String chunk, float[] vector) {
+    /**
+     * 获取消息重试次数
+     */
+    private int getRetryCount(List<Map<String, Object>> xDeath) {
+        if (xDeath == null || xDeath.isEmpty()) {
+            return 0;
+        }
+
+        for (java.util.Map<String, Object> death : xDeath) {
+            Object count = death.get("count");
+            if (count instanceof Number) {
+                return ((Number) count).intValue();
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 记录失败信息
+     */
+    private void recordFailureInfo(String message, Exception e, int retryCount) {
+        try {
+            // 这里可以记录到数据库、发送告警等
+            log.warn("消息处理失败记录 - 消息: {}, 异常: {}, 重试次数: {}", message, e.getMessage(), retryCount);
+
+            // 如果需要，可以在这里添加业务逻辑：
+            // 1. 记录到失败日志表
+            // 2. 发送告警通知
+            // 3. 更新文件处理状态等
+        } catch (Exception ex) {
+            log.error("记录失败信息时出现异常", ex);
+        }
+    }
+
+    /**
+     * 文本块和向量的包装类
+     */
+    private record ChunkWithVector(String chunk, float[] vector) {
     }
 }

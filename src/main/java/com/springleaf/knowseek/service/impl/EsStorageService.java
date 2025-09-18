@@ -18,7 +18,7 @@ public class EsStorageService {
     private final ElasticsearchClient esClient;
 
     public void saveChunks(String fileName, String fileLocation, List<String> chunks, List<float[]> vectors) throws IOException {
-        for (int i = 0; i < chunks.size(); i++) {
+        for (int i = 1; i <= chunks.size(); i++) {
             Map<String, Object> doc = new HashMap<>();
             doc.put("content", chunks.get(i));
             doc.put("vector", vectors.get(i));

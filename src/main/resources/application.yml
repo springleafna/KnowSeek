@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/know_seek?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
-    password: Yjw0117#
+    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
@@ -25,6 +25,13 @@ spring:
     listener:
       simple:
         prefetch: 1 # 每次投递n个消息，消费完在投递n个
+        retry:
+          enabled: true
+          max-attempts: 3 # 最大重试次数
+          initial-interval: 1000ms # 初始重试间隔
+          multiplier: 2.0 # 重试间隔倍数
+          max-interval: 10000ms # 最大重试间隔
+        default-requeue-rejected: false # 消费失败后不重新入队
     topic:
       file-processing-vectorize: file.processing.vectorize
   ai:
