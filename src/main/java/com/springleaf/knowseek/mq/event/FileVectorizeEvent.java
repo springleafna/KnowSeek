@@ -45,6 +45,16 @@ public class FileVectorizeEvent extends BaseEvent<FileVectorizeEvent.FileVectori
          */
         private String location;
 
+        /**
+         * 文件名
+         */
+        private String fileName;
+
+        /**
+         * 文件类型
+         */
+        private String extension;
+
     }
 
 }

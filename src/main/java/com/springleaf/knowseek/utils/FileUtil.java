@@ -98,7 +98,7 @@ public class FileUtil {
     }
 
     /**
-     * 提取文件扩展名
+     * 提取文件扩展名  xxx
      *
      * @param fileName 文件名
      * @return 小写的文件扩展名，如果没有扩展名则返回null

@@ -87,7 +87,7 @@ public class FileServiceImpl implements FileService {
         Long fileSize = dto.getFileSize();  //文件大小
         Integer chunkTotal = dto.getChunkTotal();   // 分片总数
         Long knowledgeBaseId = dto.getKnowledgeBaseId();
-        String extension = FileUtil.getFileExtension(fileName);  // 获取文件扩展名：.xxx
+        String extension = FileUtil.extractFileExtension(fileName);  // 获取文件扩展名：xxx
         // URL 过期时间配置化
         long expireSeconds = ossConfig.getPresignedUrlExpiration();
         Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
@@ -243,6 +243,7 @@ public class FileServiceImpl implements FileService {
             Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
+            String extension = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "extension");
             if (id == null || fileKey == null) {
                 throw new BusinessException("文件上传信息不完整");
             }
@@ -328,9 +329,13 @@ public class FileServiceImpl implements FileService {
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
 
             // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
-            /*FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage.builder().location(location).build();
-            eventPublisher.publish(fileVectorizeEvent.topic(), fileVectorizeEvent.buildEventMessage(fileVectorizeMessage));
-*/
+            /*FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage
+                    .builder()
+                    .location(location)
+                    .fileName(fileName)
+                    .extension(extension)
+                    .build();
+            eventPublisher.publish(fileVectorizeEvent.topic(), fileVectorizeEvent.buildEventMessage(fileVectorizeMessage));*/
             return new UploadCompleteVO(false, null, location);
         } catch (Exception e) {
             log.error("分片合并失败", e);
@@ -478,7 +483,6 @@ public class FileServiceImpl implements FileService {
             Long id = (Long) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "id");
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
-            String extension = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "extension");
             Integer chunkTotal = (Integer) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
 
             if (id == null || fileKey == null || chunkTotal == null) {
