@@ -4,10 +4,16 @@ spring:
   jackson:
     time-zone: GMT+8
   datasource:
-    url: jdbc:mysql://120.26.236.122:33306/know_seek?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: YOUR_ROOT_PASSWORD
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    mysql:
+      url: jdbc:mysql://120.26.236.122:33306/know_seek?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: root
+      password: YOUR_ROOT_PASSWORD
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    pgvector:
+      driver-class-name: org.postgresql.Driver
+      username: springleaf
+      password: Yjw123456#
+      url: jdbc:postgresql://120.26.236.122:15432/know_seek
   data:
     redis:
       host: 120.26.236.122
@@ -59,7 +65,7 @@ spring:
     uris: 120.26.236.122:9200
 
 mybatis:
-  mapper-locations: classpath:/mapper/*.xml
+  mapper-locations: classpath:/mapper/mysql/*.xml
 logging:
   level:
     com.springleaf.knowseek.mapper: DEBUG

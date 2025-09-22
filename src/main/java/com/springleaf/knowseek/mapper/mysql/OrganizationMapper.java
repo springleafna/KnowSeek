@@ -1,7 +1,6 @@
-package com.springleaf.knowseek.mapper;
+package com.springleaf.knowseek.mapper.mysql;
 
 import com.springleaf.knowseek.model.entity.Organization;
-import com.springleaf.knowseek.model.vo.OrganizationListVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

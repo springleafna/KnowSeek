@@ -7,19 +7,60 @@ import com.aliyun.oss.common.comm.SignVersion;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
 import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
+import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
+import com.springleaf.knowseek.model.entity.VectorRecord;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @SpringBootTest
 public class ApiTest {
 
-    @Autowired
+    @Resource
     private EmbeddingModel embeddingModel;
+    @Resource
+    private VectorRecordMapper vectorRecordMapper;
+
+    @Test
+    public void testInsertVector() {
+        VectorRecord vectorRecord = new VectorRecord();
+        // 测试少量文本
+        String texts = "hello world";
+        float[] embeddings = embeddingModel.embed(texts);
+        vectorRecord.setUserId(1001L);
+        vectorRecord.setKnowledgeBaseId(2001L);
+        vectorRecord.setOrganizationId(3001L);
+        String embeddingStr = vectorToString(embeddings);
+        vectorRecord.setEmbedding(embeddingStr);
+        vectorRecord.setCreatedAt(LocalDateTime.now());
+        vectorRecord.setUpdatedAt(LocalDateTime.now());
+
+        // 执行插入
+        int rows = vectorRecordMapper.insert(vectorRecord);
+
+        // 验证插入成功
+        System.out.println("插入影响行数: " + rows);
+
+
+    }
+
+    // 将 float[] 转为 pgvector 字符串格式: "[0.1,0.2,0.3,...]"
+    private String vectorToString(float[] vector) {
+        if (vector == null || vector.length == 0) return "";
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        for (int i = 0; i < vector.length; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(vector[i]);
+        }
+        sb.append(']');
+        return sb.toString();
+    }
 
     @Test
     public void testEmbeddingConnection() {

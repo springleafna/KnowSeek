@@ -1,0 +1,12 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE tb_vector_record (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    knowledge_base_id BIGINT NOT NULL,
+    organization_id BIGINT,
+    embedding VECTOR(1024) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted BOOLEAN NOT NULL DEFAULT FALSE
+);

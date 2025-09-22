@@ -2,7 +2,7 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.exception.BusinessException;
-import com.springleaf.knowseek.mapper.SessionMapper;
+import com.springleaf.knowseek.mapper.mysql.SessionMapper;
 import com.springleaf.knowseek.model.dto.SessionCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
 import com.springleaf.knowseek.model.entity.Session;

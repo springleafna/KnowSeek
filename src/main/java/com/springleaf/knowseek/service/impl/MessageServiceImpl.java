@@ -2,8 +2,8 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.exception.BusinessException;
-import com.springleaf.knowseek.mapper.MessageMapper;
-import com.springleaf.knowseek.mapper.SessionMapper;
+import com.springleaf.knowseek.mapper.mysql.MessageMapper;
+import com.springleaf.knowseek.mapper.mysql.SessionMapper;
 import com.springleaf.knowseek.model.dto.MessageCreateDTO;
 import com.springleaf.knowseek.model.entity.Message;
 import com.springleaf.knowseek.model.entity.Session;

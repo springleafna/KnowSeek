@@ -2,8 +2,8 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
-import com.springleaf.knowseek.mapper.FileUploadMapper;
-import com.springleaf.knowseek.mapper.KnowledgeBaseMapper;
+import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
+import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseCreateDTO;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseUpdateDTO;
 import com.springleaf.knowseek.model.entity.FileUpload;

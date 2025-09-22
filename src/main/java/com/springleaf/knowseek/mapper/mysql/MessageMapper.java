@@ -1,4 +1,4 @@
-package com.springleaf.knowseek.mapper;
+package com.springleaf.knowseek.mapper.mysql;
 
 import com.springleaf.knowseek.model.entity.Message;
 import org.apache.ibatis.annotations.Mapper;

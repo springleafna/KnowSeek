@@ -1,9 +1,8 @@
 package com.springleaf.knowseek.config;
 
 import cn.dev33.satoken.stp.StpInterface;
-import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.enums.UserRoleEnum;
-import com.springleaf.knowseek.mapper.UserMapper;
+import com.springleaf.knowseek.mapper.mysql.UserMapper;
 import com.springleaf.knowseek.model.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

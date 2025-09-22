@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.springleaf.knowseek.model.entity.VectorRecord">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="organization_id" property="organizationId" />
+        <result column="knowledge_base_id" property="knowledgeBaseId" />
+        <result column="embedding" property="embedding" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <!-- 插入记录 -->
+    <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.VectorRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_vector_record (
+        user_id,
+        knowledge_base_id,
+        organization_id,
+        embedding,
+        created_at,
+        updated_at,
+        ) VALUES (
+        #{userId},
+        #{knowledgeBaseId},
+        #{organizationId},
+        #{embedding}::vector,
+        NOW(),
+        NOW())
+    </insert>
+
+</mapper>
