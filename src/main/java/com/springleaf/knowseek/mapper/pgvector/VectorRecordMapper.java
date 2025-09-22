@@ -1,9 +1,7 @@
 package com.springleaf.knowseek.mapper.pgvector;
 
 import com.springleaf.knowseek.model.entity.VectorRecord;
-import org.apache.ibatis.annotations.Mapper;
 
-@Mapper
 public interface VectorRecordMapper {
 
 

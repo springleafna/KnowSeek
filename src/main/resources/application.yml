@@ -9,11 +9,28 @@ spring:
       username: root
       password: YOUR_ROOT_PASSWORD
       driver-class-name: com.mysql.cj.jdbc.Driver
+      type: com.zaxxer.hikari.HikariDataSource
+      hikari:
+        auto-commit: true
+        maximum-pool-size: 25
+        minimum-idle: 15
+        idle-timeout: 300000     # 5分钟（必须 < max-lifetime）
+        pool-name: HikariCP
+        max-lifetime: 600000     # 10分钟
+        connection-timeout: 30000
+        connection-test-query: SELECT 1
+        validation-timeout: 5000  # 5秒，避免验证卡死
     pgvector:
       driver-class-name: org.postgresql.Driver
       username: springleaf
       password: Yjw123456#
       url: jdbc:postgresql://120.26.236.122:15432/know_seek
+      type: com.zaxxer.hikari.HikariDataSource
+      hikari:
+        maximum-pool-size: 5
+        minimum-idle: 2
+        idle-timeout: 300000
+        connection-timeout: 30000
   data:
     redis:
       host: 120.26.236.122

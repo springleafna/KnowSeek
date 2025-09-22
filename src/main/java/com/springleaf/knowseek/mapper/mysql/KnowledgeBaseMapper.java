@@ -1,7 +1,6 @@
 package com.springleaf.knowseek.mapper.mysql;
 
 import com.springleaf.knowseek.model.entity.KnowledgeBase;
-import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -9,7 +8,6 @@ import java.util.List;
 /**
  * 知识库 Mapper 接口
  */
-@Mapper
 public interface KnowledgeBaseMapper {
 
     /**

@@ -1,12 +1,10 @@
 package com.springleaf.knowseek.mapper.mysql;
 
 import com.springleaf.knowseek.model.entity.UserOrganization;
-import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;
 import java.util.Map;
 
-@Mapper
 public interface UserOrganizationMapper {
 
     /**

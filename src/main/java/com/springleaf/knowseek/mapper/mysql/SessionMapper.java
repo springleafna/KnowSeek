@@ -1,12 +1,10 @@
 package com.springleaf.knowseek.mapper.mysql;
 
 import com.springleaf.knowseek.model.entity.Session;
-import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
-@Mapper
 public interface SessionMapper {
 
     /**

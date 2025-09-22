@@ -23,7 +23,7 @@
         organization_id,
         embedding,
         created_at,
-        updated_at,
+        updated_at
         ) VALUES (
         #{userId},
         #{knowledgeBaseId},
