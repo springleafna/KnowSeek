@@ -4,7 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.springleaf.knowseek.mq.event.BaseEvent;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
-import com.springleaf.knowseek.service.impl.EmbeddingService;
+import com.springleaf.knowseek.service.EmbeddingService;
 import com.springleaf.knowseek.service.impl.EsStorageService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
