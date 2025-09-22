@@ -9,6 +9,7 @@
         <result column="password" property="password" />
         <result column="role" property="role" />
         <result column="primary_org_id" property="primaryOrgId" />
+        <result column="primary_knowledge_base_id" property="primaryKnowledgeBaseId" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="deleted" property="deleted" />
@@ -16,7 +17,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, username, password, role, primary_org_id, created_at, updated_at, deleted
+        id, username, password, role, primary_org_id, primary_knowledge_base_id, created_at, updated_at, deleted
     </sql>
 
     <!-- 根据ID查询用户 -->
@@ -97,7 +98,7 @@
     <!-- 设置用户主知识库ID -->
     <update id="setPrimaryKnowledgeBaseId">
         UPDATE tb_user
-        SET private_knowledge_base_id = #{knowledgeBaseId}
+        SET primary_knowledge_base_id = #{knowledgeBaseId}
         WHERE id = #{userId}
     </update>
 

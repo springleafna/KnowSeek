@@ -36,6 +36,11 @@ public class User {
     private Long primaryOrgId;
 
     /**
+     * 用户主知识库ID
+     */
+    private Long primaryKnowledgeBaseId;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;

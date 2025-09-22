@@ -35,6 +35,7 @@ CREATE TABLE tb_file_upload (
     created_at   TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     location 		 VARCHAR(255)     DEFAULT NULL COMMENT '阿里云OSS地址',
     merged_at    TIMESTAMP        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '合并时间',
+    deleted TINYINT(1) NOT NULL DEFAULT '0' COMMENT '删除标志（0正常 1删除）',
     PRIMARY KEY (id),
     UNIQUE KEY uk_md5_user (file_md5, user_id),
     INDEX idx_user (user_id),

@@ -4,14 +4,16 @@ spring:
   jackson:
     time-zone: GMT+8
   datasource:
-    url: jdbc:mysql://localhost:3306/know_seek?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://120.26.236.122:33306/know_seek?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: 1234
+    password: YOUR_ROOT_PASSWORD
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: 120.26.236.122
+      port: 56379
+      username: default
+      password: Yjw123456#
   servlet:
     multipart:
       enabled: true
