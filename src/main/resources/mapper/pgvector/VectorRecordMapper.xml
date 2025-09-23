@@ -8,7 +8,10 @@
         <result column="user_id" property="userId" />
         <result column="organization_id" property="organizationId" />
         <result column="knowledge_base_id" property="knowledgeBaseId" />
+        <result column="file_id" property="fileId" />
         <result column="embedding" property="embedding" />
+        <result column="chunk_index" property="chunkIndex" />
+        <result column="chunk_text" property="chunkText" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="deleted" property="deleted" />
@@ -21,14 +24,20 @@
         user_id,
         knowledge_base_id,
         organization_id,
+        file_id,
         embedding,
+        chunk_index,
+        chunk_text,
         created_at,
         updated_at
         ) VALUES (
         #{userId},
         #{knowledgeBaseId},
         #{organizationId},
+        #{fileId},
         #{embedding}::vector,
+        #{chunkIndex},
+        #{chunkText},
         NOW(),
         NOW())
     </insert>

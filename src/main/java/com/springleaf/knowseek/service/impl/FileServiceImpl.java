@@ -13,6 +13,7 @@ import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
 import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
+import com.springleaf.knowseek.model.bo.VectorBO;
 import com.springleaf.knowseek.model.dto.*;
 import com.springleaf.knowseek.model.entity.FileUpload;
 import com.springleaf.knowseek.model.vo.FileItemVO;
@@ -337,8 +338,17 @@ public class FileServiceImpl implements FileService {
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
 
             // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
+            // TODO：待完成
+            /*VectorBO vectorBO = VectorBO.builder()
+                    .organizationId(organizationId)
+                    .fileId(fileId)
+                    .knowledgeBaseId(knowledgeBaseId)
+                    .userId(userId)
+                    .build();*/
+
             FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage
                     .builder()
+                    // .vectorBO(vectorBO)
                     .location(location)
                     .fileName(fileName)
                     .extension(extension)

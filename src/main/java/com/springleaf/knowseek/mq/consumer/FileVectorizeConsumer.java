@@ -2,10 +2,11 @@ package com.springleaf.knowseek.mq.consumer;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
+import com.springleaf.knowseek.model.bo.VectorBO;
 import com.springleaf.knowseek.mq.event.BaseEvent;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
 import com.springleaf.knowseek.service.EmbeddingService;
-import com.springleaf.knowseek.service.impl.EsStorageService;
+import com.springleaf.knowseek.service.VectorRecordService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
@@ -43,7 +44,7 @@ public class FileVectorizeConsumer {
     private EmbeddingService embeddingService;
 
     @Resource
-    private EsStorageService esStorageService;
+    private VectorRecordService vectorRecordService;
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(3);
     private static final int BUFFER_SIZE = 8192; // 8KB 缓冲区
@@ -81,10 +82,12 @@ public class FileVectorizeConsumer {
             String fileName = messageData.getFileName();
             String extension = messageData.getExtension();
 
+            VectorBO vectorBO = messageData.getVectorBO();
+
             log.info("开始流式处理文件，文件名称：{}，文件类型: {}，文件地址: {}", fileName, extension, location);
             
             // 使用流式处理
-            processFileStreaming(fileName, location, extension);
+            processFileStreaming(fileName, location, extension, vectorBO);
             
             long processingTime = System.currentTimeMillis() - startTime;
             log.info("文档流式处理完成，耗时: {} ms", processingTime);
@@ -106,7 +109,7 @@ public class FileVectorizeConsumer {
     /**
      * 流式处理文件向量化
      */
-    private void processFileStreaming(String fileName, String fileUrl, String extension) throws Exception {
+    private void processFileStreaming(String fileName, String fileUrl, String extension, VectorBO vectorBO) throws Exception {
         BlockingQueue<String> chunkQueue = new LinkedBlockingQueue<>(100);
         BlockingQueue<ChunkWithVector> vectorQueue = new LinkedBlockingQueue<>(100);
         
@@ -136,7 +139,7 @@ public class FileVectorizeConsumer {
         CompletableFuture<Void> storageFuture = CompletableFuture.runAsync(
             () -> {
                 try {
-                    storeVectors(fileName, fileUrl, vectorQueue);
+                    storeVectors(fileName, fileUrl, vectorQueue, vectorBO);
                 } catch (Exception e) {
                     log.error("存储失败", e);
                     throw new RuntimeException("存储失败", e);
@@ -406,7 +409,7 @@ public class FileVectorizeConsumer {
     /**
      * 异步批量存储到ES
      */
-    private void storeVectors(String fileName, String fileLocation, BlockingQueue<ChunkWithVector> vectorQueue) {
+    private void storeVectors(String fileName, String fileLocation, BlockingQueue<ChunkWithVector> vectorQueue, VectorBO vectorBO) {
         try {
             List<String> chunkBatch = new ArrayList<>();
             List<float[]> vectorBatch = new ArrayList<>();
@@ -424,7 +427,7 @@ public class FileVectorizeConsumer {
                     if ("EOF".equals(item.chunk())) {
                         // 处理最后一批
                         if (!chunkBatch.isEmpty()) {
-                            esStorageService.saveChunks(fileName, fileLocation, chunkBatch, vectorBatch);
+                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, vectorBO);
                             log.info("最后一批存储完成，共 {} 个向量", chunkBatch.size());
                         }
                         break;
@@ -441,7 +444,7 @@ public class FileVectorizeConsumer {
                         
                         // 批量存储
                         if (chunkBatch.size() >= BATCH_PROCESS_SIZE) {
-                            esStorageService.saveChunks(fileName, fileLocation, chunkBatch, vectorBatch);
+                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, vectorBO);
                             log.info("批量存储完成，共 {} 个向量", chunkBatch.size());
                             chunkBatch.clear();
                             vectorBatch.clear();
@@ -485,7 +488,7 @@ public class FileVectorizeConsumer {
             return 0;
         }
 
-        for (java.util.Map<String, Object> death : xDeath) {
+        for (Map<String, Object> death : xDeath) {
             Object count = death.get("count");
             if (count instanceof Number) {
                 return ((Number) count).intValue();

@@ -1,5 +1,6 @@
 package com.springleaf.knowseek.mq.event;
 
+import com.springleaf.knowseek.model.bo.VectorBO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,6 +40,8 @@ public class FileVectorizeEvent extends BaseEvent<FileVectorizeEvent.FileVectori
     @NoArgsConstructor
     @AllArgsConstructor
     public static class FileVectorizeMessage {
+
+        private VectorBO vectorBO;
 
         /**
          * 文件地址

@@ -1,6 +1,7 @@
 package com.springleaf.knowseek.model.entity;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class VectorRecord {
 
     private Long id;
@@ -22,7 +24,13 @@ public class VectorRecord {
 
     private Long organizationId;
 
-    private String embedding;
+    private Long fileId;
+
+    private float[] embedding;
+
+    private Integer chunkIndex;
+
+    private String chunkText;
 
     private LocalDateTime createdAt;
 

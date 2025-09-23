@@ -1,8 +1,10 @@
 package com.springleaf.knowseek.service;
 
-import com.springleaf.knowseek.model.entity.VectorRecord;
+import com.springleaf.knowseek.model.bo.VectorBO;
+
+import java.util.List;
 
 public interface VectorRecordService {
 
-    void insertVectorRecord(VectorRecord record);
+    void saveVectorRecord(List<String> chunks, List<float[]> vectors, VectorBO vectorBO);
 }
