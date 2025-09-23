@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface VectorRecordService {
 
-    void saveVectorRecord(List<String> chunks, List<float[]> vectors, VectorBO vectorBO);
+    void saveVectorRecord(List<String> chunks, List<float[]> vectors, int startChunkIndex, VectorBO vectorBO);
 }

@@ -9,6 +9,7 @@ import com.aliyun.oss.model.PutObjectResult;
 import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
 import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
 import com.springleaf.knowseek.model.entity.VectorRecord;
+import com.springleaf.knowseek.utils.VectorUtil;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -35,8 +36,10 @@ public class ApiTest {
         vectorRecord.setUserId(1001L);
         vectorRecord.setKnowledgeBaseId(2001L);
         vectorRecord.setOrganizationId(3001L);
-        String embeddingStr = vectorToString(embeddings);
-        vectorRecord.setEmbedding(embeddingStr);
+        vectorRecord.setFileId(11111L);
+        vectorRecord.setChunkIndex(1);
+        vectorRecord.setChunkText(texts);
+        vectorRecord.setEmbedding(VectorUtil.vectorToString(embeddings));
         vectorRecord.setCreatedAt(LocalDateTime.now());
         vectorRecord.setUpdatedAt(LocalDateTime.now());
 

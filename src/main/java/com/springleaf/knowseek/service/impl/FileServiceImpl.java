@@ -172,6 +172,8 @@ public class FileServiceImpl implements FileService {
             redisValue.put("userId", String.valueOf(userId));
             redisValue.put("chunkTotal", String.valueOf(chunkTotal));
             redisValue.put("knowledgeBaseId", String.valueOf(knowledgeBaseId));
+            // TODO：待替换真实值
+            redisValue.put("organizationId", "123");
 
             stringRedisTemplate.opsForHash().putAll(fileUploadInfoKey, redisValue);
             stringRedisTemplate.expire(fileUploadInfoKey, expireSeconds, TimeUnit.SECONDS);
@@ -338,17 +340,35 @@ public class FileServiceImpl implements FileService {
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
 
             // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
-            // TODO：待完成
-            /*VectorBO vectorBO = VectorBO.builder()
+            // TODO：
+            String userIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
+            if (userIdStr == null) {
+                throw new IllegalArgumentException("userId not found");
+            }
+            Long userId = Long.valueOf(userIdStr.trim());
+
+            String knowledgeBaseIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
+            if (knowledgeBaseIdStr == null) {
+                throw new IllegalArgumentException("knowledgeBaseId not found");
+            }
+            Long knowledgeBaseId = Long.valueOf(userIdStr.trim());
+
+            String organizationIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
+            if (organizationIdStr == null) {
+                throw new IllegalArgumentException("knowledgeBaseId not found");
+            }
+            Long organizationId = Long.valueOf(userIdStr.trim());
+
+            VectorBO vectorBO = VectorBO.builder()
                     .organizationId(organizationId)
-                    .fileId(fileId)
+                    .fileId(id)
                     .knowledgeBaseId(knowledgeBaseId)
                     .userId(userId)
-                    .build();*/
+                    .build();
 
             FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage
                     .builder()
-                    // .vectorBO(vectorBO)
+                    .vectorBO(vectorBO)
                     .location(location)
                     .fileName(fileName)
                     .extension(extension)

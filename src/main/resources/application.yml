@@ -1,5 +1,5 @@
 server:
-  port: 8081 # 指定端口号
+  port: 8181 # 指定端口号
 spring:
   jackson:
     time-zone: GMT+8

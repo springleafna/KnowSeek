@@ -187,6 +187,10 @@ public class FileVectorizeConsumer {
 
                 log.info("文件解析和分块完成: {}", fileUrl);
 
+                // 延迟发送 EOF，确保向量化线程有时间消费所有 chunk
+                // 等待 1 秒，让队列中的 chunk 被消费
+                Thread.sleep(1000);
+
             } finally {
                 connection.disconnect();
                 // 确保在所有处理完成后发送结束信号
@@ -414,6 +418,9 @@ public class FileVectorizeConsumer {
             List<String> chunkBatch = new ArrayList<>();
             List<float[]> vectorBatch = new ArrayList<>();
             ChunkWithVector item;
+
+            // 全局记录器记录总的分片数
+            int globalChunkIndex = 1;
             
             while (true) {
                 try {
@@ -427,7 +434,7 @@ public class FileVectorizeConsumer {
                     if ("EOF".equals(item.chunk())) {
                         // 处理最后一批
                         if (!chunkBatch.isEmpty()) {
-                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, vectorBO);
+                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, globalChunkIndex, vectorBO);
                             log.info("最后一批存储完成，共 {} 个向量", chunkBatch.size());
                         }
                         break;
@@ -444,7 +451,8 @@ public class FileVectorizeConsumer {
                         
                         // 批量存储
                         if (chunkBatch.size() >= BATCH_PROCESS_SIZE) {
-                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, vectorBO);
+                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, globalChunkIndex, vectorBO);
+                            globalChunkIndex += chunkBatch.size(); // 累加
                             log.info("批量存储完成，共 {} 个向量", chunkBatch.size());
                             chunkBatch.clear();
                             vectorBatch.clear();

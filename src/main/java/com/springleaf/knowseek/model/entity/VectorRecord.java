@@ -26,7 +26,7 @@ public class VectorRecord {
 
     private Long fileId;
 
-    private float[] embedding;
+    private String embedding;
 
     private Integer chunkIndex;
 
