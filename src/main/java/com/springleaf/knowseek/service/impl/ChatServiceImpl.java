@@ -212,7 +212,7 @@ public class ChatServiceImpl implements ChatService {
 
                         // 输出安全检测
                         if (PromptSecurityGuardUtil.isOutputUnsafe(content)) {
-                            log.warn("Unsafe model output detected, replacing with safe response.");
+                            log.warn("检测到不安全的模型输出，替换为安全响应。");
                             content = PromptSecurityGuardUtil.SAFE_FALLBACK_RESPONSE;
                             fullResponse.setLength(0); // 清空已拼接内容
                             fullResponse.append(content);
