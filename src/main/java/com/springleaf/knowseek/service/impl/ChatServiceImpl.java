@@ -301,7 +301,7 @@ public class ChatServiceImpl implements ChatService {
         try {
             // 构建标题生成的提示词
             String titlePrompt = String.format(
-                "请根据用户首次提问，生成一个中文、不超过12字的精准会话标题。要求：\n" +
+                "请根据用户首次提问，生成一个中文、不超过15字的精准会话标题。要求：\n" +
                 "必须是陈述性短语，非疑问句；\n" +
                 "保留核心动词与对象（如\"撰写\"\"分析\"\"推荐\"）；\n" +
                 "若涉及人名/专有名词，可保留关键术语（如\"Python\"\"雅思\"）；\n" +
@@ -316,11 +316,6 @@ public class ChatServiceImpl implements ChatService {
             Prompt prompt = new Prompt(new UserMessage(titlePrompt));
             ChatResponse response = chatModel.call(prompt);
             String generatedTitle = response.getResult().getOutput().getText().trim();
-
-            // 限制标题长度，确保不超过12个字符
-            if (generatedTitle.length() > 15) {
-                generatedTitle = generatedTitle.substring(0, 15) + "...";
-            }
 
             // 更新会话标题
             SessionUpdateDTO updateDTO = new SessionUpdateDTO();

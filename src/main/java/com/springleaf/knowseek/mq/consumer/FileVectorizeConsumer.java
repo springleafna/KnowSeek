@@ -51,7 +51,7 @@ public class FileVectorizeConsumer {
     private static final int CHUNK_SIZE = 1000; // 文本块大小
     private static final int CHUNK_OVERLAP = 100; // 重叠大小
     private static final int BATCH_PROCESS_SIZE = 10; // 批量处理文本块数量
-    private static final int QUEUE_TIMEOUT_SECONDS = 120; // 队列超时时间
+    private static final int QUEUE_TIMEOUT_SECONDS = 600; // 队列等待超时设为 10 分钟（600 秒），防止大文件解析慢导致误判
 
     // 定义纯文本类型，这些类型可以使用最高效的流式读取
     private static final Set<String> PLAIN_TEXT_EXTENSIONS = new HashSet<>(Arrays.asList(
@@ -67,11 +67,11 @@ public class FileVectorizeConsumer {
             }
     ))
     public void listener(String message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
-                        @Header(value = "x-death", required = false) java.util.List<java.util.Map<String, Object>> xDeath) {
+                         @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) {
         long startTime = System.currentTimeMillis();
         try {
             log.info("[消费者] 文件向量化任务正式执行 - 执行消费逻辑，topic: {}, message: {}", topic, message);
-            
+
             // 将消息转换成FileVectorizeMessage对象
             BaseEvent.EventMessage<FileVectorizeEvent.FileVectorizeMessage> eventMessage = JSON.parseObject(message,
                     new TypeReference<BaseEvent.EventMessage<FileVectorizeEvent.FileVectorizeMessage>>() {
@@ -85,18 +85,18 @@ public class FileVectorizeConsumer {
             VectorBO vectorBO = messageData.getVectorBO();
 
             log.info("开始流式处理文件，文件名称：{}，文件类型: {}，文件地址: {}", fileName, extension, location);
-            
+
             // 使用流式处理
-            processFileStreaming(fileName, location, extension, vectorBO);
-            
+            processFileStreaming(location, extension, vectorBO);
+
             long processingTime = System.currentTimeMillis() - startTime;
             log.info("文档流式处理完成，耗时: {} ms", processingTime);
-            
+
         } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - startTime;
             int retryCount = getRetryCount(xDeath);
             log.error("监听[消费者] 文件向量化任务，消费失败 topic: {} message: {}，耗时: {} ms，重试次数: {}",
-                     topic, message, processingTime, retryCount, e);
+                    topic, message, processingTime, retryCount, e);
 
             // 记录失败信息到数据库或日志系统（可选）
             recordFailureInfo(message, e, retryCount);
@@ -109,49 +109,49 @@ public class FileVectorizeConsumer {
     /**
      * 流式处理文件向量化
      */
-    private void processFileStreaming(String fileName, String fileUrl, String extension, VectorBO vectorBO) throws Exception {
+    private void processFileStreaming(String fileUrl, String extension, VectorBO vectorBO) throws Exception {
         BlockingQueue<String> chunkQueue = new LinkedBlockingQueue<>(100);
         BlockingQueue<ChunkWithVector> vectorQueue = new LinkedBlockingQueue<>(100);
-        
+
         // 异步执行三个阶段：下载+分块、向量化、存储
         CompletableFuture<Void> downloadFuture = CompletableFuture.runAsync(
-            () -> {
-                try {
-                    downloadAndChunkStreaming(fileUrl, extension, chunkQueue);
-                } catch (Exception e) {
-                    log.error("下载和分块失败", e);
-                    chunkQueue.offer("ERROR");
-                    throw new RuntimeException("下载失败", e);
-                }
-            }, executorService);
-            
+                () -> {
+                    try {
+                        downloadAndChunkStreaming(fileUrl, extension, chunkQueue);
+                    } catch (Exception e) {
+                        log.error("下载和分块失败", e);
+                        chunkQueue.offer("ERROR");
+                        throw new RuntimeException("下载失败", e);
+                    }
+                }, executorService);
+
         CompletableFuture<Void> vectorizeFuture = CompletableFuture.runAsync(
-            () -> {
-                try {
-                    vectorizeChunks(chunkQueue, vectorQueue);
-                } catch (Exception e) {
-                    log.error("向量化失败", e);
-                    vectorQueue.offer(new ChunkWithVector("ERROR", null));
-                    throw new RuntimeException("向量化失败", e);
-                }
-            }, executorService);
-            
+                () -> {
+                    try {
+                        vectorizeChunks(chunkQueue, vectorQueue);
+                    } catch (Exception e) {
+                        log.error("向量化失败", e);
+                        vectorQueue.offer(new ChunkWithVector("ERROR", null));
+                        throw new RuntimeException("向量化失败", e);
+                    }
+                }, executorService);
+
         CompletableFuture<Void> storageFuture = CompletableFuture.runAsync(
-            () -> {
-                try {
-                    storeVectors(fileName, fileUrl, vectorQueue, vectorBO);
-                } catch (Exception e) {
-                    log.error("存储失败", e);
-                    throw new RuntimeException("存储失败", e);
-                }
-            }, executorService);
-        
+                () -> {
+                    try {
+                        storeVectors(vectorQueue, vectorBO);
+                    } catch (Exception e) {
+                        log.error("存储失败", e);
+                        throw new RuntimeException("存储失败", e);
+                    }
+                }, executorService);
+
         try {
             // 等待所有任务完成，设置超时时间
             CompletableFuture.allOf(downloadFuture, vectorizeFuture, storageFuture)
-                .get(300, TimeUnit.SECONDS); // 5分钟超时
+                    .get(QUEUE_TIMEOUT_SECONDS, TimeUnit.SECONDS); // 10分钟超时
         } catch (Exception e) {
-            log.error("流式处理超时或失败", e);
+            log.error("流式处理超时或失败（超过 {} 秒）", QUEUE_TIMEOUT_SECONDS, e);
             // 取消所有任务
             downloadFuture.cancel(true);
             vectorizeFuture.cancel(true);
@@ -215,8 +215,9 @@ public class FileVectorizeConsumer {
     /**
      * 使用 Apache Tika 从输入流中提取文本，然后进行分块。
      * 这是一个“伪流式”处理：Tika会先在内存中构建文档模型来提取文本。
+     *
      * @param inputStream 文件输入流
-     * @param chunkQueue 文本块队列
+     * @param chunkQueue  文本块队列
      */
     private void processWithTika(InputStream inputStream, BlockingQueue<String> chunkQueue) throws Exception {
         Tika tika = new Tika();
@@ -234,7 +235,8 @@ public class FileVectorizeConsumer {
 
     /**
      * 对一个已知的长字符串进行分块处理
-     * @param text 要分块的文本
+     *
+     * @param text       要分块的文本
      * @param chunkQueue 文本块队列
      */
     private void chunkExtractedText(String text, BlockingQueue<String> chunkQueue) {
@@ -251,8 +253,9 @@ public class FileVectorizeConsumer {
 
     /**
      * 专门处理纯文本的“真·流式”方法，内存占用最低。
+     *
      * @param inputStream 文件输入流
-     * @param chunkQueue 文本块队列
+     * @param chunkQueue  文本块队列
      */
     private void processPlainTextStream(InputStream inputStream, BlockingQueue<String> chunkQueue) throws IOException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8), BUFFER_SIZE)) {
@@ -277,7 +280,8 @@ public class FileVectorizeConsumer {
 
     /**
      * 核心分块方法：将给定内容按智能断句逻辑切分成文本块列表。
-     * @param content 要进行分块的文本内容
+     *
+     * @param content      要进行分块的文本内容
      * @param isFinalChunk 布尔值，表示这是否是最后一部分内容。如果是，则会处理到末尾；如果不是，会为重叠保留内容。
      * @return 一个包含所有文本块的列表
      */
@@ -349,42 +353,43 @@ public class FileVectorizeConsumer {
         try {
             List<String> batch = new ArrayList<>();
             String chunk;
-            
+
             while (true) {
-                try {
-                    chunk = chunkQueue.poll(QUEUE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                    
-                    if (chunk == null) {
-                        log.warn("向量化队列超时，可能下载过程出现问题");
-                        break;
-                    }
-                    
-                    if ("EOF".equals(chunk)) {
-                        // 处理最后一批
-                        if (!batch.isEmpty()) {
-                            processBatch(batch, vectorQueue);
-                        }
-                        vectorQueue.offer(new ChunkWithVector("EOF", null)); // 结束信号
-                        break;
-                    }
-                    
-                    if ("ERROR".equals(chunk)) {
-                        vectorQueue.offer(new ChunkWithVector("ERROR", null)); // 错误信号
-                        break;
-                    }
+                // 等待最多 10 分钟
+                chunk = chunkQueue.poll(QUEUE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-                    batch.add(chunk);
-
-                    // 批量处理
-                    if (batch.size() >= BATCH_PROCESS_SIZE) {
-                        processBatch(batch, vectorQueue);
-                        batch.clear();
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                if (chunk == null) {
+                    log.error("向量化线程等待文本块超过 {} 秒，判定为异常，终止处理", QUEUE_TIMEOUT_SECONDS);
+                    vectorQueue.offer(new ChunkWithVector("ERROR", null));
                     break;
                 }
+
+                if ("EOF".equals(chunk)) {
+                    // 处理最后一批
+                    if (!batch.isEmpty()) {
+                        processBatch(batch, vectorQueue);
+                    }
+                    vectorQueue.offer(new ChunkWithVector("EOF", null)); // 结束信号
+                    break;
+                }
+
+                if ("ERROR".equals(chunk)) {
+                    vectorQueue.offer(new ChunkWithVector("ERROR", null)); // 错误信号
+                    break;
+                }
+
+                batch.add(chunk);
+
+                // 批量处理
+                if (batch.size() >= BATCH_PROCESS_SIZE) {
+                    processBatch(batch, vectorQueue);
+                    batch.clear();
+                }
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("向量化线程被中断");
+            vectorQueue.offer(new ChunkWithVector("ERROR", null));
         } catch (Exception e) {
             log.error("向量化处理失败", e);
             vectorQueue.offer(new ChunkWithVector("ERROR", null));
@@ -399,7 +404,7 @@ public class FileVectorizeConsumer {
         try {
             log.info("开始向量化批次处理，共 {} 个文本块", batch.size());
             List<float[]> vectors = embeddingService.embedTexts(new ArrayList<>(batch));
-            
+
             for (int i = 0; i < batch.size(); i++) {
                 vectorQueue.offer(new ChunkWithVector(batch.get(i), vectors.get(i)));
             }
@@ -411,9 +416,9 @@ public class FileVectorizeConsumer {
     }
 
     /**
-     * 异步批量存储到ES
+     * 异步批量存储到pgvector —— 同样使用 10 分钟兜底超时
      */
-    private void storeVectors(String fileName, String fileLocation, BlockingQueue<ChunkWithVector> vectorQueue, VectorBO vectorBO) {
+    private void storeVectors(BlockingQueue<ChunkWithVector> vectorQueue, VectorBO vectorBO) {
         try {
             List<String> chunkBatch = new ArrayList<>();
             List<float[]> vectorBatch = new ArrayList<>();
@@ -421,46 +426,41 @@ public class FileVectorizeConsumer {
 
             // 全局记录器记录总的分片数
             int globalChunkIndex = 1;
-            
+
             while (true) {
-                try {
-                    item = vectorQueue.poll(QUEUE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                    
-                    if (item == null) {
-                        log.warn("存储队列超时，可能向量化过程出现问题");
-                        break;
-                    }
-                    
-                    if ("EOF".equals(item.chunk())) {
-                        // 处理最后一批
-                        if (!chunkBatch.isEmpty()) {
-                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, globalChunkIndex, vectorBO);
-                            log.info("最后一批存储完成，共 {} 个向量", chunkBatch.size());
-                        }
-                        break;
-                    }
-                    
-                    if ("ERROR".equals(item.chunk())) {
-                        log.error("在存储阶段接收到错误信号");
-                        break;
-                    }
-                    
-                    if (item.vector() != null) {
-                        chunkBatch.add(item.chunk());
-                        vectorBatch.add(item.vector());
-                        
-                        // 批量存储
-                        if (chunkBatch.size() >= BATCH_PROCESS_SIZE) {
-                            vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, globalChunkIndex, vectorBO);
-                            globalChunkIndex += chunkBatch.size(); // 累加
-                            log.info("批量存储完成，共 {} 个向量", chunkBatch.size());
-                            chunkBatch.clear();
-                            vectorBatch.clear();
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                item = vectorQueue.poll(QUEUE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+                if (item == null) {
+                    log.error("存储线程等待向量超过 {} 秒，判定为异常，终止处理", QUEUE_TIMEOUT_SECONDS);
                     break;
+                }
+
+                if ("EOF".equals(item.chunk())) {
+                    // 处理最后一批
+                    if (!chunkBatch.isEmpty()) {
+                        vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, globalChunkIndex, vectorBO);
+                        log.info("最后一批存储完成，共 {} 个向量", chunkBatch.size());
+                    }
+                    break;
+                }
+
+                if ("ERROR".equals(item.chunk())) {
+                    log.error("在存储阶段接收到错误信号");
+                    break;
+                }
+
+                if (item.vector() != null) {
+                    chunkBatch.add(item.chunk());
+                    vectorBatch.add(item.vector());
+
+                    // 批量存储
+                    if (chunkBatch.size() >= BATCH_PROCESS_SIZE) {
+                        vectorRecordService.saveVectorRecord(chunkBatch, vectorBatch, globalChunkIndex, vectorBO);
+                        globalChunkIndex += chunkBatch.size(); // 累加
+                        log.info("批量存储完成，共 {} 个向量", chunkBatch.size());
+                        chunkBatch.clear();
+                        vectorBatch.clear();
+                    }
                 }
             }
         } catch (Exception e) {
