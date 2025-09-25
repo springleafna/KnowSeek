@@ -2,6 +2,7 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
+import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
 import com.springleaf.knowseek.mapper.mysql.UserMapper;
 import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
 import com.springleaf.knowseek.model.bo.VectorRecordSearchBO;
@@ -16,6 +17,7 @@ import com.springleaf.knowseek.model.vo.SessionVO;
 import com.springleaf.knowseek.service.MessageService;
 import com.springleaf.knowseek.service.ChatService;
 import com.springleaf.knowseek.service.SessionService;
+import com.springleaf.knowseek.utils.PromptSecurityGuardUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -46,6 +48,7 @@ public class ChatServiceImpl implements ChatService {
     private final VectorRecordMapper vectorRecordMapper;
     private final UserMapper userMapper;
     private final EmbeddingModel embeddingModel;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -110,16 +113,38 @@ public class ChatServiceImpl implements ChatService {
             List<Message> messages = getSessionMessages(sessionId);
             boolean isFirstMessage = messages.isEmpty();
 
+            String userQuestion = requestDTO.getMessage();
+
+            // 输入安全检测
+            if (PromptSecurityGuardUtil.isInputMalicious(userQuestion)) {
+                // 直接返回拦截响应，不调用模型
+                ChatResponseVO blockedResponse = new ChatResponseVO();
+                blockedResponse.setMessage(PromptSecurityGuardUtil.INJECTION_BLOCKED_RESPONSE);
+                blockedResponse.setSessionId(sessionId);
+                blockedResponse.setTimestamp(LocalDateTime.now());
+                blockedResponse.setRole("assistant");
+                blockedResponse.setFromKnowledgeBase(false);
+
+                try {
+                    emitter.send(SseEmitter.event().data(blockedResponse));
+                    emitter.complete();
+                } catch (IOException e) {
+                    log.error("Failed to send blocked response", e);
+                    emitter.completeWithError(e);
+                }
+                return emitter;
+            }
+
             // RAG 检索知识
             Boolean useKnowledgeBase = requestDTO.getUseKnowledgeBase();
             if (useKnowledgeBase != null && useKnowledgeBase) {
-                String userQuestion = requestDTO.getMessage();
 
                 float[] queryVector = embeddingModel.embed(userQuestion);
 
+                Long primaryKnowledgeBaseId = userMapper.selectById(currentUserId).getPrimaryKnowledgeBaseId();
                 VectorRecordSearchBO searchBO = new VectorRecordSearchBO();
                 searchBO.setUserId(currentUserId);
-                searchBO.setKnowledgeBaseId(userMapper.selectById(currentUserId).getPrimaryKnowledgeBaseId());
+                searchBO.setKnowledgeBaseId(primaryKnowledgeBaseId);
                 searchBO.setTopK(3);
                 searchBO.setQueryVector(queryVector);
 
@@ -128,18 +153,20 @@ public class ChatServiceImpl implements ChatService {
 
                 // 构建知识上下文并加入 messages
                 if (!relevantRecords.isEmpty()) {
-                    StringBuilder knowledgeContext = new StringBuilder("请基于以下知识回答问题：\n");
+                    StringBuilder knowledgeContext = new StringBuilder();
                     for (VectorRecord record : relevantRecords) {
                         knowledgeContext.append("- ").append(record.getChunkText()).append("\n");
                     }
                     knowledgeContext.append("\n");
                     log.info("知识上下文: {}", knowledgeContext);
-                    messages.add(new SystemMessage(knowledgeContext.toString()));
+                    String kbName = knowledgeBaseMapper.getNameById(primaryKnowledgeBaseId);
+                    String systemPrompt = PromptSecurityGuardUtil.buildSecureSystemPrompt(knowledgeContext.toString(), kbName);
+                    messages.add(new SystemMessage(systemPrompt));
                 }
             }
 
             // 添加用户真实提问
-            messages.add(new UserMessage(requestDTO.getMessage()));
+            messages.add(new UserMessage(userQuestion));
 
             // 保存用户消息到数据库
             saveUserMessage(sessionId, requestDTO.getMessage(), currentUserId);
@@ -182,6 +209,14 @@ public class ChatServiceImpl implements ChatService {
                     try {
                         String content = chatResponse.getResult().getOutput().getText();
                         fullResponse.append(content);
+
+                        // 输出安全检测
+                        if (PromptSecurityGuardUtil.isOutputUnsafe(content)) {
+                            log.warn("Unsafe model output detected, replacing with safe response.");
+                            content = PromptSecurityGuardUtil.SAFE_FALLBACK_RESPONSE;
+                            fullResponse.setLength(0); // 清空已拼接内容
+                            fullResponse.append(content);
+                        }
 
                         ChatResponseVO responseVO = new ChatResponseVO();
                         responseVO.setMessage(content);

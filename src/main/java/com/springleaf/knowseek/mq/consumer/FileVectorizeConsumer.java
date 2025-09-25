@@ -51,7 +51,7 @@ public class FileVectorizeConsumer {
     private static final int CHUNK_SIZE = 1000; // 文本块大小
     private static final int CHUNK_OVERLAP = 100; // 重叠大小
     private static final int BATCH_PROCESS_SIZE = 10; // 批量处理文本块数量
-    private static final int QUEUE_TIMEOUT_SECONDS = 30; // 队列超时时间
+    private static final int QUEUE_TIMEOUT_SECONDS = 120; // 队列超时时间
 
     // 定义纯文本类型，这些类型可以使用最高效的流式读取
     private static final Set<String> PLAIN_TEXT_EXTENSIONS = new HashSet<>(Arrays.asList(
