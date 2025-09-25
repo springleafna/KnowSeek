@@ -57,7 +57,7 @@ public class KnowledgeBaseController {
     }
 
     /**
-     * 更新知识库名称
+     * 编辑知识库
      */
     @PutMapping("/update")
     public Result<Void> updateKnowledgeBaseName(@RequestBody @Valid KnowledgeBaseUpdateDTO updateDTO) {
@@ -75,5 +75,14 @@ public class KnowledgeBaseController {
             return Result.error("知识库不存在");
         }
         return Result.success(vo);
+    }
+
+    /**
+     * 选中某个知识库设为用户主知识库
+     */
+    @PostMapping("/setPrimary")
+    public Result<Void> setPrimary(@RequestParam("id") @NotNull(message = "知识库ID不能为空！") Long id) {
+        knowledgeBaseService.setPrimaryKnowledgeBase(id);
+        return Result.success();
     }
 }

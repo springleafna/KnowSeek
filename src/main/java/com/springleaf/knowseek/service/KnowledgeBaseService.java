@@ -4,6 +4,7 @@ import com.springleaf.knowseek.model.dto.KnowledgeBaseCreateDTO;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseUpdateDTO;
 import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.KnowledgeBaseVO;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
@@ -44,4 +45,9 @@ public interface KnowledgeBaseService {
      * @return 知识库VO，如果不存在则可能抛出异常或返回null
      */
     KnowledgeBaseVO getKnowledgeBaseById(Long id);
+
+    /**
+     * 选中某个知识库设为用户主知识库
+     */
+    void setPrimaryKnowledgeBase(Long id);
 }

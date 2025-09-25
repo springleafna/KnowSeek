@@ -137,6 +137,7 @@ public class UserServiceImpl implements UserService {
         }else {
             userInfoVO.setPrimaryOrgName(null);
         }
+        userInfoVO.setPrimaryKbId(user.getPrimaryKnowledgeBaseId());
         log.info("获取用户信息 {}", userInfoVO);
         return userInfoVO;
     }

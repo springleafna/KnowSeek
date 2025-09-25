@@ -2,8 +2,10 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
+import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
 import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
+import com.springleaf.knowseek.mapper.mysql.UserMapper;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseCreateDTO;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseUpdateDTO;
 import com.springleaf.knowseek.model.entity.FileUpload;
@@ -27,6 +29,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     private final FileUploadMapper fileUploadMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
+    private final UserMapper userMapper;
 
     @Override
     public List<FileItemVO> getFileList(Long id) {
@@ -101,6 +104,15 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         BeanUtils.copyProperties(entity, vo);
 
         return vo;
+    }
+
+    @Override
+    public void setPrimaryKnowledgeBase(Long id) {
+        if (knowledgeBaseMapper.selectKnowledgeBaseById(id) == null) {
+            throw new BusinessException("该知识库不存在");
+        }
+        Long userId = StpUtil.getLoginIdAsLong();
+        userMapper.setPrimaryKnowledgeBaseId(id, userId);
     }
 
 

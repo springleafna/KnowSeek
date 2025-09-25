@@ -22,4 +22,9 @@ public class UserInfoVO {
      * 用户主组织ID
      */
     private String primaryOrgName;
+
+    /**
+     * 用户主知识库ID
+     */
+    private Long primaryKbId;
 }
