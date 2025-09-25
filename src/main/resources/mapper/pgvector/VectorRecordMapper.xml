@@ -42,4 +42,18 @@
         NOW())
     </insert>
 
+    <!-- 用 CDATA 包裹包含 '<' 的 SQL -->
+    <select id="findTopKByEmbedding" resultMap="BaseResultMap">
+        <![CDATA[
+        SELECT
+            id, user_id, knowledge_base_id, embedding, chunk_text
+        FROM tb_vector_record
+        WHERE user_id = #{userId}
+          AND knowledge_base_id = #{knowledgeBaseId}
+          AND deleted = false
+        ORDER BY embedding <-> #{queryVector}
+        LIMIT #{topK}
+        ]]>
+    </select>
+
 </mapper>

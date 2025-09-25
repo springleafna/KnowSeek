@@ -1,6 +1,7 @@
 package com.springleaf.knowseek.config;
 
 import com.zaxxer.hikari.HikariDataSource;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
@@ -15,7 +16,6 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.util.Objects;
 
 @Configuration
 @MapperScan(
@@ -61,17 +61,21 @@ public class MysqlDataSourceConfig {
     }
 
     @Bean("mysqlSqlSessionFactory")
-    public SqlSessionFactoryBean mysqlSqlSessionFactory(@Qualifier("mysqlDataSource") DataSource mysqlDataSource) throws Exception {
+    public SqlSessionFactory mysqlSqlSessionFactory(
+            @Qualifier("mysqlDataSource") DataSource mysqlDataSource) throws Exception {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(mysqlDataSource);
-        factoryBean.setMapperLocations(new PathMatchingResourcePatternResolver()
-                .getResources("classpath:/mapper/mysql/*.xml"));
-        return factoryBean;
+        factoryBean.setMapperLocations(
+                new PathMatchingResourcePatternResolver()
+                        .getResources("classpath:/mapper/mysql/*.xml")
+        );
+        return factoryBean.getObject();
     }
 
     @Bean("mysqlSqlSessionTemplate")
-    public SqlSessionTemplate mysqlSqlSessionTemplate(@Qualifier("mysqlSqlSessionFactory") SqlSessionFactoryBean factory) throws Exception {
-        return new SqlSessionTemplate(Objects.requireNonNull(factory.getObject()));
+    public SqlSessionTemplate mysqlSqlSessionTemplate(
+            @Qualifier("mysqlSqlSessionFactory") SqlSessionFactory sqlSessionFactory) {
+        return new SqlSessionTemplate(sqlSessionFactory);
     }
 
     @Bean("mysqlTransactionManager")

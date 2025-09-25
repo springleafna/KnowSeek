@@ -1,6 +1,9 @@
 package com.springleaf.knowseek.mapper.pgvector;
 
+import com.springleaf.knowseek.model.bo.VectorRecordSearchBO;
 import com.springleaf.knowseek.model.entity.VectorRecord;
+
+import java.util.List;
 
 public interface VectorRecordMapper {
 
@@ -11,4 +14,7 @@ public interface VectorRecordMapper {
      * @return 影响行数（通常为1）
      */
     int insert(VectorRecord record);
+
+
+    List<VectorRecord> findTopKByEmbedding(VectorRecordSearchBO record);
 }

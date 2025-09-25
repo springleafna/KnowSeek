@@ -1,6 +1,8 @@
 package com.springleaf.knowseek.config;
 
+import com.springleaf.knowseek.handler.VectorTypeHandler;
 import com.zaxxer.hikari.HikariDataSource;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
@@ -14,7 +16,6 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.util.Objects;
 
 @Configuration
 @MapperScan(
@@ -59,17 +60,26 @@ public class PgVectorDataSourceConfig {
     }
 
     @Bean("pgVectorSqlSessionFactory")
-    public SqlSessionFactoryBean pgVectorSqlSessionFactory(@Qualifier("pgVectorDataSource") DataSource pgVectorDataSource) throws Exception {
+    public SqlSessionFactory pgVectorSqlSessionFactory(
+            @Qualifier("pgVectorDataSource") DataSource pgVectorDataSource) throws Exception {
+
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(pgVectorDataSource);
-        factoryBean.setMapperLocations(new PathMatchingResourcePatternResolver()
-                .getResources("classpath:/mapper/pgvector/*.xml"));
-        return factoryBean;
+        factoryBean.setMapperLocations(
+                new PathMatchingResourcePatternResolver()
+                        .getResources("classpath:/mapper/pgvector/*.xml")
+        );
+
+        // 显式注册自定义 TypeHandler
+        factoryBean.setTypeHandlers(new VectorTypeHandler());
+
+        return factoryBean.getObject();
     }
 
     @Bean("pgVectorSqlSessionTemplate")
-    public SqlSessionTemplate pgVectorSqlSessionTemplate(@Qualifier("pgVectorSqlSessionFactory") SqlSessionFactoryBean factory) throws Exception {
-        return new SqlSessionTemplate(Objects.requireNonNull(factory.getObject()));
+    public SqlSessionTemplate pgVectorSqlSessionTemplate(
+            @Qualifier("pgVectorSqlSessionFactory") SqlSessionFactory sqlSessionFactory) {
+        return new SqlSessionTemplate(sqlSessionFactory);
     }
 
     @Bean("pgVectorTransactionManager")

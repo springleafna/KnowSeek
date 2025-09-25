@@ -7,17 +7,22 @@ import com.aliyun.oss.common.comm.SignVersion;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
 import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
+import com.springleaf.knowseek.handler.VectorTypeHandler;
 import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
 import com.springleaf.knowseek.model.entity.VectorRecord;
-import com.springleaf.knowseek.utils.VectorUtil;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.File;
+import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 public class ApiTest {
@@ -26,6 +31,32 @@ public class ApiTest {
     private EmbeddingModel embeddingModel;
     @Resource
     private VectorRecordMapper vectorRecordMapper;
+
+    @Test
+    void testVectorRoundTrip() throws SQLException {
+        VectorTypeHandler handler = new VectorTypeHandler();
+
+        // 测试写入格式
+        float[] input = {0.1f, -0.000123f, 1e-5f, 0.0f, -0.0f, 1.0f};
+        String expected = "[0.1,-0.000123,0.00001,0,0,1]";
+
+        StringBuilder sb = new StringBuilder("[");
+        for (int j = 0; j < input.length; j++) {
+            if (j > 0) sb.append(",");
+            float f = input[j];
+            if (Float.isInfinite(f)) {
+                sb.append("0.0");
+            } else {
+                sb.append(BigDecimal.valueOf(f).stripTrailingZeros().toPlainString());
+            }
+        }
+        sb.append("]");
+        assertEquals(expected, sb.toString());
+
+        // 测试解析
+        float[] output = handler.parseVectorString(expected);
+        assertArrayEquals(new float[]{0.1f, -0.000123f, 1e-5f, 0.0f, 0.0f, 1.0f}, output, 0.00001f);
+    }
 
     @Test
     public void testInsertVector() {
@@ -39,7 +70,7 @@ public class ApiTest {
         vectorRecord.setFileId(11111L);
         vectorRecord.setChunkIndex(1);
         vectorRecord.setChunkText(texts);
-        vectorRecord.setEmbedding(VectorUtil.vectorToString(embeddings));
+        vectorRecord.setEmbedding(embeddings);
         vectorRecord.setCreatedAt(LocalDateTime.now());
         vectorRecord.setUpdatedAt(LocalDateTime.now());
 

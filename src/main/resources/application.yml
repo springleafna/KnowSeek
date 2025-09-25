@@ -82,7 +82,9 @@ spring:
     uris: 120.26.236.122:9200
 
 mybatis:
-  mapper-locations: classpath:/mapper/mysql/*.xml
+  mapper-locations: classpath:/mapper/*
+  configuration:
+    map-underscore-to-camel-case: true
 logging:
   level:
     com.springleaf.knowseek.mapper: DEBUG

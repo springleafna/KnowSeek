@@ -4,7 +4,6 @@ import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
 import com.springleaf.knowseek.model.bo.VectorBO;
 import com.springleaf.knowseek.model.entity.VectorRecord;
 import com.springleaf.knowseek.service.VectorRecordService;
-import com.springleaf.knowseek.utils.VectorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +27,7 @@ public class VectorRecordServiceImpl implements VectorRecordService {
                     .knowledgeBaseId(vectorBO.getKnowledgeBaseId())
                     .chunkIndex(startChunkIndex + i)
                     .chunkText(chunks.get(i))
-                    .embedding(VectorUtil.vectorToString(vectors.get(i)))
+                    .embedding(vectors.get(i))
                     .build();
 
             vectorRecordMapper.insert(record);

@@ -2,10 +2,14 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
+import com.springleaf.knowseek.mapper.mysql.UserMapper;
+import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
+import com.springleaf.knowseek.model.bo.VectorRecordSearchBO;
 import com.springleaf.knowseek.model.dto.MessageCreateDTO;
 import com.springleaf.knowseek.model.dto.ChatRequestDTO;
 import com.springleaf.knowseek.model.dto.SessionCreateDTO;
 import com.springleaf.knowseek.model.dto.SessionUpdateDTO;
+import com.springleaf.knowseek.model.entity.VectorRecord;
 import com.springleaf.knowseek.model.vo.MessageVO;
 import com.springleaf.knowseek.model.vo.ChatResponseVO;
 import com.springleaf.knowseek.model.vo.SessionVO;
@@ -16,9 +20,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -37,6 +43,9 @@ public class ChatServiceImpl implements ChatService {
     private final DashScopeChatModel chatModel;
     private final SessionService sessionService;
     private final MessageService messageService;
+    private final VectorRecordMapper vectorRecordMapper;
+    private final UserMapper userMapper;
+    private final EmbeddingModel embeddingModel;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -101,7 +110,35 @@ public class ChatServiceImpl implements ChatService {
             List<Message> messages = getSessionMessages(sessionId);
             boolean isFirstMessage = messages.isEmpty();
 
-            // 添加用户消息
+            // RAG 检索知识
+            Boolean useKnowledgeBase = requestDTO.getUseKnowledgeBase();
+            if (useKnowledgeBase != null && useKnowledgeBase) {
+                String userQuestion = requestDTO.getMessage();
+
+                float[] queryVector = embeddingModel.embed(userQuestion);
+
+                VectorRecordSearchBO searchBO = new VectorRecordSearchBO();
+                searchBO.setUserId(currentUserId);
+                searchBO.setKnowledgeBaseId(userMapper.selectById(currentUserId).getPrimaryKnowledgeBaseId());
+                searchBO.setTopK(3);
+                searchBO.setQueryVector(queryVector);
+
+                // 执行检索
+                List<VectorRecord> relevantRecords = vectorRecordMapper.findTopKByEmbedding(searchBO);
+
+                // 构建知识上下文并加入 messages
+                if (!relevantRecords.isEmpty()) {
+                    StringBuilder knowledgeContext = new StringBuilder("请基于以下知识回答问题：\n");
+                    for (VectorRecord record : relevantRecords) {
+                        knowledgeContext.append("- ").append(record.getChunkText()).append("\n");
+                    }
+                    knowledgeContext.append("\n");
+                    log.info("知识上下文: {}", knowledgeContext);
+                    messages.add(new SystemMessage(knowledgeContext.toString()));
+                }
+            }
+
+            // 添加用户真实提问
             messages.add(new UserMessage(requestDTO.getMessage()));
 
             // 保存用户消息到数据库
