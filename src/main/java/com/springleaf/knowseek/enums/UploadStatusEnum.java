@@ -40,7 +40,22 @@ public enum UploadStatusEnum {
     /**
      * 上传失败（网络中断、校验失败等）
      */
-    FAILED(5, "上传失败");
+    UPLOAD_FAILED(5, "上传失败"),
+
+    /**
+     * 处理中
+     */
+    PROCESSING(6, "处理中"),
+
+    /**
+     * 处理失败
+     */
+    PROCESSING_FAILED(7, "处理失败"),
+
+    /**
+     * 处理完成
+     */
+    PROCESSING_COMPLETED(8, "处理完成");
 
     private final int status;
     private final String description;
@@ -53,6 +68,18 @@ public enum UploadStatusEnum {
     public static UploadStatusEnum of(int status) {
         for (UploadStatusEnum value : UploadStatusEnum.values()) {
             if (value.status == status) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 通过status 获取枚举
+     */
+    public static UploadStatusEnum getByStatus(int status) {
+        for (UploadStatusEnum value : UploadStatusEnum.values()) {
+            if (value.getStatus() == status) {
                 return value;
             }
         }
@@ -97,8 +124,29 @@ public enum UploadStatusEnum {
     /**
      * 判断是否为“上传失败”
      */
-    public boolean isFailed() {
-        return this == FAILED;
+    public boolean isUploadFailed() {
+        return this == UPLOAD_FAILED;
+    }
+
+    /**
+     * 判断是否为“处理中”
+     */
+    public boolean isProcessing() {
+        return this == PROCESSING;
+    }
+
+    /**
+     * 判断是否为“处理失败”
+     */
+    public boolean isProcessingFailed() {
+        return this == PROCESSING_FAILED;
+    }
+
+    /**
+     * 判断是否为“处理完成”
+     */
+    public boolean isProcessingCompleted() {
+        return this == PROCESSING_COMPLETED;
     }
 
     @Override

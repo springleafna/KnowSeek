@@ -2,10 +2,13 @@ package com.springleaf.knowseek.mq.consumer;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
+import com.springleaf.knowseek.enums.UploadStatusEnum;
+import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
 import com.springleaf.knowseek.model.bo.VectorBO;
 import com.springleaf.knowseek.mq.event.BaseEvent;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
 import com.springleaf.knowseek.service.EmbeddingService;
+import com.springleaf.knowseek.service.FileService;
 import com.springleaf.knowseek.service.VectorRecordService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +49,9 @@ public class FileVectorizeConsumer {
     @Resource
     private VectorRecordService vectorRecordService;
 
+    @Resource
+    private FileUploadMapper fileUploadMapper;
+
     private final ExecutorService executorService = Executors.newFixedThreadPool(3);
     private static final int BUFFER_SIZE = 8192; // 8KB 缓冲区
     private static final int CHUNK_SIZE = 1000; // 文本块大小
@@ -69,6 +75,8 @@ public class FileVectorizeConsumer {
     public void listener(String message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
                          @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) {
         long startTime = System.currentTimeMillis();
+        Long fileId = null; // 提前声明 fileId，用于失败时更新状态
+
         try {
             log.info("[消费者] 文件向量化任务正式执行 - 执行消费逻辑，topic: {}, message: {}", topic, message);
 
@@ -83,14 +91,20 @@ public class FileVectorizeConsumer {
             String extension = messageData.getExtension();
 
             VectorBO vectorBO = messageData.getVectorBO();
+            fileId = messageData.getVectorBO().getFileId();
 
             log.info("开始流式处理文件，文件名称：{}，文件类型: {}，文件地址: {}", fileName, extension, location);
-
+            // 更新文件上传状态为“处理中”
+            fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.PROCESSING.getStatus());
             // 使用流式处理
             processFileStreaming(location, extension, vectorBO);
 
             long processingTime = System.currentTimeMillis() - startTime;
             log.info("文档流式处理完成，耗时: {} ms", processingTime);
+
+            // 更新文件上传状态为“处理完成”
+            fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.PROCESSING_COMPLETED.getStatus());
+
 
         } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - startTime;
@@ -98,11 +112,15 @@ public class FileVectorizeConsumer {
             log.error("监听[消费者] 文件向量化任务，消费失败 topic: {} message: {}，耗时: {} ms，重试次数: {}",
                     topic, message, processingTime, retryCount, e);
 
+            // 更新文件上传状态为“处理失败”
+            fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.PROCESSING_FAILED.getStatus());
+
             // 记录失败信息到数据库或日志系统（可选）
             recordFailureInfo(message, e, retryCount);
 
             // 不再重新抛出异常，让Spring Boot的重试机制接管
             // 当达到最大重试次数时，消息会自动进入死信队列
+
         }
     }
 

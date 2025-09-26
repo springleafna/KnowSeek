@@ -64,13 +64,10 @@ public class FileServiceImpl implements FileService {
                 .map(fileUpload -> {
                     FileItemVO fileItemVO = new FileItemVO();
                     BeanUtils.copyProperties(fileUpload, fileItemVO);
-                    if (fileUpload.getStatus().equals(UploadStatusEnum.COMPLETED.getStatus())) {
-                        fileItemVO.setStatus(UploadStatusEnum.COMPLETED.getDescription());
-                    } else if (fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus())) {
-                        fileItemVO.setStatus(UploadStatusEnum.UPLOADING.getDescription());
-                    } else {
-                        fileItemVO.setStatus(UploadStatusEnum.FAILED.getDescription());
-                    }
+
+                    UploadStatusEnum statusEnum = UploadStatusEnum.getByStatus(fileUpload.getStatus());
+                    fileItemVO.setStatus(statusEnum != null ? statusEnum.getDescription() : "未知状态");
+
                     fileItemVO.setKnowledgeBaseName(knowledgeBaseMapper.getNameById(fileUpload.getKnowledgeBaseId()));
                     return fileItemVO;
                 })
@@ -318,7 +315,7 @@ public class FileServiceImpl implements FileService {
                 result = ossClient.completeMultipartUpload(completeRequest);
             } catch (Exception e) {
                 log.error("OSS 分片合并失败", e);
-                fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.FAILED.getStatus());
+                fileUploadMapper.updateUploadStatus(id, UploadStatusEnum.UPLOAD_FAILED.getStatus());
                 throw new BusinessException("OSS 分片合并失败: " + e.getMessage());
             }
 
@@ -347,17 +344,17 @@ public class FileServiceImpl implements FileService {
             }
             Long userId = Long.valueOf(userIdStr.trim());
 
-            String knowledgeBaseIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
+            String knowledgeBaseIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "knowledgeBaseId");
             if (knowledgeBaseIdStr == null) {
                 throw new IllegalArgumentException("knowledgeBaseId not found");
             }
-            Long knowledgeBaseId = Long.valueOf(userIdStr.trim());
+            Long knowledgeBaseId = Long.valueOf(knowledgeBaseIdStr.trim());
 
-            String organizationIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
+            String organizationIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "organizationId");
             if (organizationIdStr == null) {
-                throw new IllegalArgumentException("knowledgeBaseId not found");
+                throw new IllegalArgumentException("organizationId not found");
             }
-            Long organizationId = Long.valueOf(userIdStr.trim());
+            Long organizationId = Long.valueOf(organizationIdStr.trim());
 
             VectorBO vectorBO = VectorBO.builder()
                     .organizationId(organizationId)

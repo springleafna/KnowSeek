@@ -100,15 +100,7 @@ public class SessionServiceImpl implements SessionService {
         }
 
         // 更新会话信息
-        if (updateDTO.getSessionName() != null) {
-            session.setSessionName(updateDTO.getSessionName());
-        }
-        if (updateDTO.getIsActive() != null) {
-            session.setIsActive(updateDTO.getIsActive());
-        }
-        if (updateDTO.getMetadata() != null) {
-            session.setMetadata(updateDTO.getMetadata());
-        }
+        session.setSessionName(updateDTO.getSessionName());
         session.setUpdatedAt(LocalDateTime.now());
 
         // 更新数据库
@@ -117,7 +109,7 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteSession(Long id) {
+    public void deleteSession(Long id) {
         // 获取当前登录用户ID
         Long userId = StpUtil.getLoginIdAsLong();
 
@@ -136,7 +128,27 @@ public class SessionServiceImpl implements SessionService {
         messageService.deleteMessagesBySessionId(id);
 
         // 删除会话
-        return sessionMapper.deleteById(id) > 0;
+        sessionMapper.deleteById(id);
+    }
+
+    @Override
+    public void deleteMessages(Long id) {
+        // 获取当前登录用户ID
+        Long userId = StpUtil.getLoginIdAsLong();
+
+        // 查询会话
+        Session session = sessionMapper.selectById(id);
+        if (session == null) {
+            throw new BusinessException("会话不存在");
+        }
+
+        // 验证会话所属用户
+        if (!session.getUserId().equals(userId)) {
+            throw new BusinessException("无权删除该会话");
+        }
+
+        // 删除会话的所有消息
+        messageService.deleteMessagesBySessionId(id);
     }
 
     /**

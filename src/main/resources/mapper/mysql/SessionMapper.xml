@@ -44,8 +44,6 @@
         UPDATE tb_session
         <set>
             <if test="sessionName != null">session_name = #{sessionName},</if>
-            <if test="isActive != null">is_active = #{isActive},</if>
-            <if test="metadata != null">metadata = #{metadata},</if>
             updated_at = CURRENT_TIMESTAMP
         </set>
         WHERE id = #{id}

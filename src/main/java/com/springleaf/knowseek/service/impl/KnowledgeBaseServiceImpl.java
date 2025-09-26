@@ -42,13 +42,10 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 .map(fileUpload -> {
                     FileItemVO fileItemVO = new FileItemVO();
                     BeanUtils.copyProperties(fileUpload, fileItemVO);
-                    if (fileUpload.getStatus().equals(UploadStatusEnum.COMPLETED.getStatus())) {
-                        fileItemVO.setStatus(UploadStatusEnum.COMPLETED.getDescription());
-                    } else if (fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus())) {
-                        fileItemVO.setStatus(UploadStatusEnum.UPLOADING.getDescription());
-                    } else {
-                        fileItemVO.setStatus(UploadStatusEnum.FAILED.getDescription());
-                    }
+
+                    UploadStatusEnum statusEnum = UploadStatusEnum.getByStatus(fileUpload.getStatus());
+                    fileItemVO.setStatus(statusEnum != null ? statusEnum.getDescription() : "未知状态");
+
                     fileItemVO.setKnowledgeBaseName(knowledgeBaseMapper.getNameById(fileUpload.getKnowledgeBaseId()));
                     return fileItemVO;
                 })

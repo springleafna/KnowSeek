@@ -41,7 +41,12 @@ public interface SessionService {
     /**
      * 删除会话
      * @param id 会话ID
-     * @return 是否成功
      */
-    boolean deleteSession(Long id);
+    void deleteSession(Long id);
+
+    /**
+     * 删除会话消息记录
+     * @param id 会话id
+     */
+    void deleteMessages(Long id);
 }

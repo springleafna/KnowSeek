@@ -84,6 +84,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * 创建新会话
+     */
     @PostMapping("/createSession")
     public Result<SessionVO> createSession(@RequestBody @Valid SessionCreateDTO createDTO) {
         try {
@@ -133,5 +136,14 @@ public class ChatController {
             log.error("获取会话消息记录失败", e);
             return Result.error("获取消息记录失败：" + e.getMessage());
         }
+    }
+
+    /**
+     * 删除会话历史记录
+     */
+    @DeleteMapping("/deleteMessages/{sessionId}")
+    public Result<Void> deleteSessionMessages(@PathVariable Long sessionId) {
+        sessionService.deleteMessages(sessionId);
+        return Result.success();
     }
 }
