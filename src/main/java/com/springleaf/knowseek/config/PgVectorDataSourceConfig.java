@@ -32,8 +32,10 @@ public class PgVectorDataSourceConfig {
             @Value("${spring.datasource.pgvector.password}") String password,
             @Value("${spring.datasource.pgvector.hikari.maximum-pool-size:5}") int maximumPoolSize,
             @Value("${spring.datasource.pgvector.hikari.minimum-idle:2}") int minimumIdle,
-            @Value("${spring.datasource.pgvector.hikari.idle-timeout:30000}") long idleTimeout,
-            @Value("${spring.datasource.pgvector.hikari.connection-timeout:30000}") long connectionTimeout) {
+            @Value("${spring.datasource.pgvector.hikari.idle-timeout:300000}") long idleTimeout,
+            @Value("${spring.datasource.pgvector.hikari.max-lifetime:1200000}") long maxLifetime,
+            @Value("${spring.datasource.pgvector.hikari.connection-timeout:30000}") long connectionTimeout,
+            @Value("${spring.datasource.pgvector.hikari.pool-name}") String poolName) {
 
         HikariDataSource dataSource = new HikariDataSource();
         dataSource.setDriverClassName(driverClassName);
@@ -45,11 +47,12 @@ public class PgVectorDataSourceConfig {
         dataSource.setMinimumIdle(minimumIdle);
         dataSource.setIdleTimeout(idleTimeout);
         dataSource.setConnectionTimeout(connectionTimeout);
+        dataSource.setMaxLifetime(maxLifetime);
 
         dataSource.setInitializationFailTimeout(1);
-        dataSource.setConnectionTestQuery("SELECT 1");
+        // dataSource.setConnectionTestQuery("SELECT 1");
         dataSource.setAutoCommit(true);
-        dataSource.setPoolName("PgVectorHikariPool");
+        dataSource.setPoolName(poolName);
 
         return dataSource;
     }

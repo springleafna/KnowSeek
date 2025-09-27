@@ -15,11 +15,10 @@ spring:
         maximum-pool-size: 25
         minimum-idle: 15
         idle-timeout: 300000     # 5分钟（必须 < max-lifetime）
-        pool-name: HikariCP
         max-lifetime: 600000     # 10分钟
         connection-timeout: 30000
-        connection-test-query: SELECT 1
         validation-timeout: 5000  # 5秒，避免验证卡死
+        pool-name: mysqlHikariCP
     pgvector:
       driver-class-name: org.postgresql.Driver
       username: springleaf
@@ -30,13 +29,26 @@ spring:
         maximum-pool-size: 5
         minimum-idle: 2
         idle-timeout: 300000
+        max-lifetime: 1200000       # 20分钟
         connection-timeout: 30000
+        pool-name: pgvectorHikariCP
   data:
     redis:
       host: 120.26.236.122
       port: 56379
       username: default
       password: Yjw123456#
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          time-between-eviction-runs: 30000     # 每30秒检查一次空闲连接
+          min-evictable-idle-time: 60000        # 连接空闲超过60秒可被回收
+          test-while-idle: true                 # 空闲时检测连接有效性
+          test-on-borrow: false                 # 借出时不检测（性能考虑）
+          test-on-create: false
   servlet:
     multipart:
       enabled: true

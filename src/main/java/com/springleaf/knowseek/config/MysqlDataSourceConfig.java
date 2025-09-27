@@ -36,7 +36,8 @@ public class MysqlDataSourceConfig {
             @Value("${spring.datasource.mysql.hikari.idle-timeout:300000}") long idleTimeout,
             @Value("${spring.datasource.mysql.hikari.connection-timeout:30000}") long connectionTimeout,
             @Value("${spring.datasource.mysql.hikari.max-lifetime:600000}") long maxLifetime,
-            @Value("${spring.datasource.mysql.hikari.validation-timeout:5000}") long validationTimeout) {
+            @Value("${spring.datasource.mysql.hikari.validation-timeout:5000}") long validationTimeout,
+            @Value("${spring.datasource.mysql.hikari.pool-name}") String poolName) {
 
         HikariDataSource dataSource = new HikariDataSource();
         dataSource.setDriverClassName(driverClassName);
@@ -49,7 +50,7 @@ public class MysqlDataSourceConfig {
         dataSource.setIdleTimeout(idleTimeout);
         dataSource.setConnectionTimeout(connectionTimeout);
         dataSource.setMaxLifetime(maxLifetime);
-        dataSource.setPoolName("MainHikariPool");
+        dataSource.setPoolName(poolName);
         dataSource.setValidationTimeout(validationTimeout);
 
         return dataSource;
