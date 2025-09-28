@@ -43,9 +43,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Service
+@Service("legacyChatService")
 @RequiredArgsConstructor
-public class ChatServiceImpl implements ChatService {
+public class LegacyChatServiceImpl implements ChatService {
 
     private final DashScopeChatModel chatModel;
     private final SessionService sessionService;
