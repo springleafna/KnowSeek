@@ -227,6 +227,8 @@ public class PromptSecurityGuardUtil {
             prompt.append("参考知识：\n").append(knowledgeContext).append("\n");
         } else {
             prompt.append("参考知识：\n（无相关信息）\n");
+            // 显式强调
+            prompt.append("\n注意：当前知识库中无任何相关信息，请严格回复指定语句。\n");
         }
 
         prompt.append("\n请严格基于上述「参考知识」回答用户问题。若无相关信息，请明确回复指定语句。");

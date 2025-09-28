@@ -7,6 +7,7 @@ import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
 import com.springleaf.knowseek.mapper.mysql.UserMapper;
 import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
 import com.springleaf.knowseek.model.bo.VectorRecordSearchBO;
+import com.springleaf.knowseek.model.bo.VectorRecordWithDistanceBO;
 import com.springleaf.knowseek.model.dto.MessageCreateDTO;
 import com.springleaf.knowseek.model.dto.ChatRequestDTO;
 import com.springleaf.knowseek.model.dto.SessionCreateDTO;
@@ -19,6 +20,8 @@ import com.springleaf.knowseek.service.MessageService;
 import com.springleaf.knowseek.service.ChatService;
 import com.springleaf.knowseek.service.SessionService;
 import com.springleaf.knowseek.utils.PromptSecurityGuardUtil;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -36,9 +39,7 @@ import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -145,16 +146,20 @@ public class ChatServiceImpl implements ChatService {
             if (useKnowledgeBase != null && useKnowledgeBase) {
 
                 float[] queryVector = embeddingModel.embed(userQuestion);
-
                 Long primaryKnowledgeBaseId = userMapper.selectById(currentUserId).getPrimaryKnowledgeBaseId();
+
+                // 即使不检索，也要准备 kbName
+                String kbName = knowledgeBaseMapper.getNameById(primaryKnowledgeBaseId);
+                String knowledgeContext = ""; // 默认为空
+
                 VectorRecordSearchBO searchBO = new VectorRecordSearchBO();
                 searchBO.setUserId(currentUserId);
                 searchBO.setKnowledgeBaseId(primaryKnowledgeBaseId);
-                searchBO.setTopK(3);
+                // searchBO.setTopK(3);
                 searchBO.setQueryVector(queryVector);
 
                 // 执行检索
-                List<VectorRecord> relevantRecords = vectorRecordMapper.findTopKByEmbedding(searchBO);
+                List<VectorRecord> relevantRecords = performEnhancedRetrieval(searchBO, queryVector);
 
                 // 构建知识上下文并加入 messages
                 if (!relevantRecords.isEmpty()) {
@@ -162,28 +167,23 @@ public class ChatServiceImpl implements ChatService {
                     Map<Long, List<VectorRecord>> recordsByFile = relevantRecords.stream()
                             .collect(Collectors.groupingBy(VectorRecord::getFileId));
 
-                    StringBuilder knowledgeContext = new StringBuilder();
-
+                    StringBuilder kbBuilder = new StringBuilder();
                     // 为每个文件单独标注
                     for (Map.Entry<Long, List<VectorRecord>> entry : recordsByFile.entrySet()) {
-                        Long fileId = entry.getKey();
-                        List<VectorRecord> chunks = entry.getValue();
-
-                        // 需要根据 fileId 查询文件名（建议缓存或批量查）
-                        String fileName = getFileDisplayName(fileId);
-
-                        knowledgeContext.append("【来源文件: ").append(fileName).append("】\n");
-                        for (VectorRecord record : chunks) {
-                            knowledgeContext.append("- ").append(record.getChunkText()).append("\n");
+                        String fileName = getFileDisplayName(entry.getKey());
+                        kbBuilder.append("【来源文件: ").append(fileName).append("】\n");
+                        for (VectorRecord record : entry.getValue()) {
+                            kbBuilder.append("- ").append(record.getChunkText()).append("\n");
                         }
-                        knowledgeContext.append("\n");
+                        kbBuilder.append("\n");
                     }
 
-                    log.info("知识上下文: {}", knowledgeContext);
-                    String kbName = knowledgeBaseMapper.getNameById(primaryKnowledgeBaseId);
-                    String systemPrompt = PromptSecurityGuardUtil.buildSecureSystemPrompt(knowledgeContext.toString(), kbName);
-                    messages.add(new SystemMessage(systemPrompt));
+                    knowledgeContext = kbBuilder.toString();
+                    log.info("检索到的相关知识：{}", knowledgeContext);
                 }
+                // 无论是否有知识，都添加 system prompt
+                String systemPrompt = PromptSecurityGuardUtil.buildSecureSystemPrompt(knowledgeContext, kbName);
+                messages.add(new SystemMessage(systemPrompt));
             }
 
             // 添加用户真实提问
@@ -361,5 +361,75 @@ public class ChatServiceImpl implements ChatService {
     private String getFileDisplayName(Long fileId) {
         String fileName = fileUploadMapper.getFileNameById(fileId);
         return StringUtils.defaultIfBlank(fileName, "未知文件_" + fileId);
+    }
+
+    private List<VectorRecord> performEnhancedRetrieval(VectorRecordSearchBO searchBO, float[] queryVector) {
+        // Step 1: 召回候选（带 distance）
+        List<VectorRecordWithDistanceBO> candidates = vectorRecordMapper.findTopKByEmbeddingWithDistance(searchBO);
+
+        if (candidates.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 2: 按 file_id 分组
+        Map<Long, List<VectorRecordWithDistanceBO>> groupedByFile = candidates.stream()
+                .collect(Collectors.groupingBy(VectorRecordWithDistanceBO::getFileId));
+
+        // Step 3: 为每个文件计算“代表分数”——取最小 distance（即最相关 chunk 的距离）
+        List<FileRelevance> fileRelevances = new ArrayList<>();
+        for (Map.Entry<Long, List<VectorRecordWithDistanceBO>> entry : groupedByFile.entrySet()) {
+            List<VectorRecordWithDistanceBO> chunks = entry.getValue();
+            // 找该文件中最相关的 chunk 的 distance
+            double bestDistance = chunks.stream()
+                    .mapToDouble(VectorRecordWithDistanceBO::getDistance)
+                    .min()
+                    .orElse(Double.MAX_VALUE);
+            fileRelevances.add(new FileRelevance(entry.getKey(), bestDistance, chunks));
+        }
+
+        // Step 4: 按文件相关性排序（distance 越小越相关）
+        fileRelevances.sort(Comparator.comparing(FileRelevance::getBestDistance));
+
+        // Step 5: 选择最相关的 1~2 个文件
+        List<VectorRecord> selected = new ArrayList<>();
+        int maxFiles = 2;
+        int chunksPerFile = 2; // 每个文件最多取 2 个 chunks
+
+        for (int i = 0; i < Math.min(maxFiles, fileRelevances.size()); i++) {
+            List<VectorRecordWithDistanceBO> chunks = fileRelevances.get(i).getChunks();
+            // 对该文件内的 chunks 按 distance 排序，取 top chunksPerFile
+            List<VectorRecordWithDistanceBO> topChunks = chunks.stream()
+                    .sorted(Comparator.comparing(VectorRecordWithDistanceBO::getDistance))
+                    .limit(chunksPerFile)
+                    .collect(Collectors.toList());
+
+            // 转换为原始 VectorRecord（去掉 distance）
+            selected.addAll(topChunks.stream().map(this::convertToVectorRecord).collect(Collectors.toList()));
+        }
+
+        return selected;
+    }
+
+    // 辅助类
+    @Data
+    @AllArgsConstructor
+    private static class FileRelevance {
+        private Long fileId;
+        private double bestDistance;
+        private List<VectorRecordWithDistanceBO> chunks;
+    }
+
+    // 转换方法
+    private VectorRecord convertToVectorRecord(VectorRecordWithDistanceBO withDist) {
+        VectorRecord record = new VectorRecord();
+        record.setId(withDist.getId());
+        record.setUserId(withDist.getUserId());
+        record.setKnowledgeBaseId(withDist.getKnowledgeBaseId());
+        record.setFileId(withDist.getFileId());
+        record.setChunkIndex(withDist.getChunkIndex());
+        record.setChunkText(withDist.getChunkText());
+        record.setEmbedding(withDist.getEmbedding());
+        // 注意：VectorRecord 原始类可能没有 distance，所以不设
+        return record;
     }
 }

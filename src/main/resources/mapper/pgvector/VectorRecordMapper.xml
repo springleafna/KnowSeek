@@ -17,6 +17,17 @@
         <result column="deleted" property="deleted" />
     </resultMap>
 
+    <resultMap id="VectorRecordWithDistanceMap" type="com.springleaf.knowseek.model.bo.VectorRecordWithDistanceBO">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="knowledge_base_id" property="knowledgeBaseId" />
+        <result column="file_id" property="fileId" />
+        <result column="chunk_index" property="chunkIndex" />
+        <result column="chunk_text" property="chunkText" />
+        <result column="embedding" property="embedding" />
+        <result column="distance" property="distance" />
+    </resultMap>
+
     <!-- 插入记录 -->
     <insert id="insert" parameterType="com.springleaf.knowseek.model.entity.VectorRecord"
             useGeneratedKeys="true" keyProperty="id">
@@ -53,6 +64,31 @@
           AND deleted = false
         ORDER BY embedding <-> #{queryVector}
         LIMIT #{topK}
+        ]]>
+    </select>
+
+    <select id="findTopKByEmbeddingWithDistance" resultMap="VectorRecordWithDistanceMap">
+        <![CDATA[
+            WITH candidates AS (
+                SELECT
+                    id,
+                    user_id,
+                    knowledge_base_id,
+                    file_id,
+                    chunk_index,
+                    chunk_text,
+                    embedding,
+                    (embedding <-> #{queryVector}) AS distance
+                FROM tb_vector_record
+                WHERE user_id = #{userId}
+                  AND knowledge_base_id = #{knowledgeBaseId}
+                  AND deleted = false
+            )
+            SELECT *
+            FROM candidates
+            WHERE distance < 0.92
+            ORDER BY distance
+            LIMIT 15
         ]]>
     </select>
 
