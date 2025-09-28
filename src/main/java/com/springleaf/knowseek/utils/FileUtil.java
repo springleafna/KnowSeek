@@ -245,7 +245,7 @@ public class FileUtil {
 
         // 检查是否为明确不支持的类型
         if (UNSUPPORTED_EXTENSIONS.contains(extension)) {
-            String message = String.format("不支持的文件类型：%s。系统仅支持文档类型文件的解析和向量化", fileType);
+            String message = String.format("不支持的文件类型：%s。系统仅支持文档类型文件", fileType);
             log.warn("文件类型验证失败: fileName={}, extension={}, fileType={}, reason=unsupported_type",
                     fileName, extension, fileType);
             throw new BusinessException(message);

@@ -52,5 +52,10 @@ public interface FileUploadMapper {
      * 根据 ID 查询文件详情
      */
     FileUpload selectById(Long id);
+
+    /**
+     * 根据 ID 获取文件名
+     */
+    String getFileNameById(Long id);
 }
 

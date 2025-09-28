@@ -80,4 +80,8 @@
         SELECT * FROM tb_file_upload WHERE id = #{id} ANd deleted = 0
     </select>
 
+    <select id="getFileNameById" resultType="java.lang.String">
+        SELECT file_name FROM tb_file_upload WHERE id = #{id} AND deleted = 0
+    </select>
+
 </mapper>

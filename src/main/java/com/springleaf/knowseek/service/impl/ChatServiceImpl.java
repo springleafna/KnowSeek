@@ -2,6 +2,7 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
+import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
 import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
 import com.springleaf.knowseek.mapper.mysql.UserMapper;
 import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
@@ -20,6 +21,7 @@ import com.springleaf.knowseek.service.SessionService;
 import com.springleaf.knowseek.utils.PromptSecurityGuardUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -36,6 +38,8 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -49,6 +53,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserMapper userMapper;
     private final EmbeddingModel embeddingModel;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
+    private final FileUploadMapper fileUploadMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -153,11 +158,27 @@ public class ChatServiceImpl implements ChatService {
 
                 // 构建知识上下文并加入 messages
                 if (!relevantRecords.isEmpty()) {
+                    // 按 file_id 分组 chunks
+                    Map<Long, List<VectorRecord>> recordsByFile = relevantRecords.stream()
+                            .collect(Collectors.groupingBy(VectorRecord::getFileId));
+
                     StringBuilder knowledgeContext = new StringBuilder();
-                    for (VectorRecord record : relevantRecords) {
-                        knowledgeContext.append("- ").append(record.getChunkText()).append("\n");
+
+                    // 为每个文件单独标注
+                    for (Map.Entry<Long, List<VectorRecord>> entry : recordsByFile.entrySet()) {
+                        Long fileId = entry.getKey();
+                        List<VectorRecord> chunks = entry.getValue();
+
+                        // 需要根据 fileId 查询文件名（建议缓存或批量查）
+                        String fileName = getFileDisplayName(fileId);
+
+                        knowledgeContext.append("【来源文件: ").append(fileName).append("】\n");
+                        for (VectorRecord record : chunks) {
+                            knowledgeContext.append("- ").append(record.getChunkText()).append("\n");
+                        }
+                        knowledgeContext.append("\n");
                     }
-                    knowledgeContext.append("\n");
+
                     log.info("知识上下文: {}", knowledgeContext);
                     String kbName = knowledgeBaseMapper.getNameById(primaryKnowledgeBaseId);
                     String systemPrompt = PromptSecurityGuardUtil.buildSecureSystemPrompt(knowledgeContext.toString(), kbName);
@@ -335,5 +356,10 @@ public class ChatServiceImpl implements ChatService {
             updateDTO.setSessionName(fallbackTitle);
             sessionService.updateSession(updateDTO, userId);
         }
+    }
+
+    private String getFileDisplayName(Long fileId) {
+        String fileName = fileUploadMapper.getFileNameById(fileId);
+        return StringUtils.defaultIfBlank(fileName, "未知文件_" + fileId);
     }
 }

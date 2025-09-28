@@ -73,7 +73,7 @@ public class FileVectorizeConsumer {
             }
     ))
     public void listener(String message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
-                         @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) {
+                         @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) throws Exception {
         long startTime = System.currentTimeMillis();
         Long fileId = null; // 提前声明 fileId，用于失败时更新状态
 
@@ -92,10 +92,13 @@ public class FileVectorizeConsumer {
 
             VectorBO vectorBO = messageData.getVectorBO();
             fileId = messageData.getVectorBO().getFileId();
+            if (fileId == null) {
+                throw new IllegalArgumentException("fileId 不能为空");
+            }
 
             log.info("开始流式处理文件，文件名称：{}，文件类型: {}，文件地址: {}", fileName, extension, location);
             // 更新文件上传状态为“处理中”
-            fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.PROCESSING.getStatus());
+            safeUpdateStatus(fileId, UploadStatusEnum.PROCESSING);
             // 使用流式处理
             processFileStreaming(location, extension, vectorBO);
 
@@ -105,7 +108,6 @@ public class FileVectorizeConsumer {
             // 更新文件上传状态为“处理完成”
             fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.PROCESSING_COMPLETED.getStatus());
 
-
         } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - startTime;
             int retryCount = getRetryCount(xDeath);
@@ -113,14 +115,26 @@ public class FileVectorizeConsumer {
                     topic, message, processingTime, retryCount, e);
 
             // 更新文件上传状态为“处理失败”
-            fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.PROCESSING_FAILED.getStatus());
-
-            // 记录失败信息到数据库或日志系统（可选）
+            if (fileId != null) {
+                safeUpdateStatus(fileId, UploadStatusEnum.PROCESSING_FAILED);
+                // 记录失败信息到数据库或日志系统（可选）
+                recordFailureInfo(message, e, retryCount);
+            } else {
+                log.warn("fileId 为空，无法更新状态，原始消息: {}", message);
+            }
             recordFailureInfo(message, e, retryCount);
 
-            // 不再重新抛出异常，让Spring Boot的重试机制接管
-            // 当达到最大重试次数时，消息会自动进入死信队列
+            throw e;
+        }
+    }
 
+    // 安全更新状态（加 try-catch 避免 DB 异常影响消息确认）
+    private void safeUpdateStatus(Long fileId, UploadStatusEnum status) {
+        try {
+            fileUploadMapper.updateUploadStatus(fileId, status.getStatus());
+        } catch (Exception dbEx) {
+            log.error("更新文件状态失败，fileId: {}, status: {}", fileId, status, dbEx);
+            // 可选：是否要抛出？一般建议记录即可，避免影响消息处理流程
         }
     }
 
