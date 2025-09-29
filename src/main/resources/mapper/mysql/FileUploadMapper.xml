@@ -18,6 +18,18 @@
         <result property="deleted" column="deleted"/>
     </resultMap>
 
+    <resultMap id="FileWithKbNameResultMap" type="com.springleaf.knowseek.model.domain.FileWithKbNameDO">
+        <id property="id" column="id"/>
+        <result property="fileName" column="file_name"/>
+        <result property="totalSize" column="total_size"/>
+        <result property="status" column="status"/>
+        <result property="knowledgeBaseId" column="knowledge_base_id"/>
+        <result property="isPublic" column="is_public"/>
+        <result property="createdAt" column="created_at"/>
+        <!-- 联合查询出的知识库名称 -->
+        <result property="knowledgeBaseName" column="knowledge_base_name"/>
+    </resultMap>
+
     <!-- 新增文件上传记录 -->
     <insert id="saveFileUpload" parameterType="com.springleaf.knowseek.model.entity.FileUpload" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO tb_file_upload (
@@ -82,6 +94,60 @@
 
     <select id="getFileNameById" resultType="java.lang.String">
         SELECT file_name FROM tb_file_upload WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectPageWithKbName" resultMap="FileWithKbNameResultMap">
+        SELECT
+        f.id,
+        f.file_name,
+        f.total_size,
+        f.status,
+        f.knowledge_base_id,
+        f.is_public,
+        f.created_at,
+        kb.name AS knowledge_base_name
+        FROM
+        tb_file_upload f
+        LEFT JOIN
+        tb_knowledge_base kb ON f.knowledge_base_id = kb.id
+        WHERE
+        f.user_id = #{userId}
+        <if test="fileName != null and fileName != ''">
+            AND f.file_name LIKE CONCAT('%', #{fileName}, '%')
+        </if>
+        <if test="kbName != null and kbName != ''">
+            AND kb.name LIKE CONCAT('%', #{kbName}, '%')
+        </if>
+
+        <!-- 在这里动态构建 ORDER BY 子句 -->
+        <if test="sortBy != null and sortBy != ''">
+            ORDER BY
+            <choose>
+                <when test="sortBy == 'fileName'">
+                    f.file_name
+                </when>
+                <when test="sortBy == 'totalSize'">
+                    f.total_size
+                </when>
+                <when test="sortBy == 'status'">
+                    f.status
+                </when>
+                <when test="sortBy == 'type'">
+                    <!-- 这里使用函数是安全的，因为 sortBy 的值已经被我们限定了 -->
+                    SUBSTRING_INDEX(f.file_name, '.', -1)
+                </when>
+                <!-- 默认排序 -->
+                <otherwise>
+                    f.created_at
+                </otherwise>
+            </choose>
+            <!-- 排序顺序，使用 ${} 是安全的，因为在Service层已校验过只能是 'asc' 或 'desc' -->
+            ${sortOrder}
+        </if>
+        <!-- 如果没有指定 sortBy，则默认按创建时间降序 -->
+        <if test="sortBy == null or sortBy == ''">
+            ORDER BY f.created_at DESC
+        </if>
     </select>
 
 </mapper>

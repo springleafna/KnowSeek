@@ -19,14 +19,29 @@ public class FilePageDTO {
     private Integer pageSize = 10;
 
     /**
-     * 组织名称（模糊搜索）
+     * 知识库名称（模糊搜索）
      */
-    private String OrgName;
+    private String kbName;
 
     /**
      * 文件名称（模糊搜索）
      */
     private String fileName;
 
+    /**
+     * 排序字段：
+     * fileName - 文件名
+     * totalSize - 文件大小
+     * status - 状态
+     * createdAt - 上传时间
+     * type - 文件类型
+     */
+    private String sortBy;
 
+    /**
+     * 排序顺序：
+     * asc - 升序
+     * desc - 降序
+     */
+    private String sortOrder = "desc"; // 默认按创建时间降序
 }

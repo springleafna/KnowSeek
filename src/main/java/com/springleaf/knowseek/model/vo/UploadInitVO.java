@@ -34,7 +34,7 @@ public class UploadInitVO {
     private String location;
 
     /**
-     * 每个分片的直传 URL（仅当 !uploaded 时有效）
+     * 每个分片的直传 URL（仅当 文件初始化完成 时有效）
      */
     private Map<Integer, String> partUploadUrls; // 每个分片直传 URL
 }

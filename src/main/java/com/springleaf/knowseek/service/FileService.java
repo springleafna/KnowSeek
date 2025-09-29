@@ -1,10 +1,7 @@
 package com.springleaf.knowseek.service;
 
-import com.springleaf.knowseek.model.dto.FileUploadCancelDTO;
-import com.springleaf.knowseek.model.dto.FileUploadChunkDTO;
-import com.springleaf.knowseek.model.dto.FileUploadChunkInitDTO;
-import com.springleaf.knowseek.model.dto.FileUploadCompleteDTO;
-import com.springleaf.knowseek.model.dto.FileUploadPauseDTO;
+import com.github.pagehelper.PageInfo;
+import com.springleaf.knowseek.model.dto.*;
 import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
@@ -18,7 +15,7 @@ public interface FileService {
     /**
      * 获取文件列表
      */
-    List<FileItemVO> getFileList();
+    PageInfo<FileItemVO> getFileList(FilePageDTO filePageDTO);
 
     /**
      * 文件上传初始化

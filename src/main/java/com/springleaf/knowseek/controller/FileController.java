@@ -1,5 +1,6 @@
 package com.springleaf.knowseek.controller;
 
+import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.*;
 import com.springleaf.knowseek.model.vo.FileItemVO;
@@ -10,8 +11,6 @@ import com.springleaf.knowseek.service.FileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/file")
@@ -24,8 +23,9 @@ public class FileController {
      * 获取当前用户的文件列表
      */
     @GetMapping("/getFileList")
-    public Result<List<FileItemVO>> getFileList() {
-        return Result.success(fileService.getFileList());
+    public Result<PageInfo<FileItemVO>> getFileList(FilePageDTO filePageDTO) {
+        PageInfo<FileItemVO> pageInfo = fileService.getFileList(filePageDTO);
+        return Result.success(pageInfo);
     }
 
     /**
@@ -61,7 +61,9 @@ public class FileController {
     public Result<UploadCompleteVO> completeChunkUpload(@RequestBody FileUploadCompleteDTO fileUploadCompleteDTO) {
         UploadCompleteVO uploadCompleteVO = fileService.completeChunkUpload(fileUploadCompleteDTO);
         return Result.success(uploadCompleteVO);
-    }    /**
+    }
+
+    /**
      * 暂停上传
      */
     @PostMapping("/pause")

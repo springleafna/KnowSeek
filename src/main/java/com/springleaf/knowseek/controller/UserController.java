@@ -6,7 +6,6 @@ import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.UserLoginDTO;
 import com.springleaf.knowseek.model.dto.UserPageDTO;
 import com.springleaf.knowseek.model.dto.UserRegisterDTO;
-import com.springleaf.knowseek.model.entity.User;
 import com.springleaf.knowseek.model.vo.UserInfoVO;
 import com.springleaf.knowseek.model.vo.UserListVO;
 import com.springleaf.knowseek.model.vo.UserLoginVO;

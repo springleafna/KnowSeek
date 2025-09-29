@@ -12,20 +12,29 @@ public class FileItemVO {
 
     private Long id;
 
-    private String fileMd5;
-
     private String fileName;
 
     /**
-     * 文件总大小（字节）
+     * 文件类型扩展名
      */
-    private Long totalSize;
+    private String type;
+
+    /**
+     * 格式化后的文件总大小（例如：1.8 MB）
+     */
+    private String totalSize;
 
     /**
      * 上传状态：
      * 0 - 上传完成
-     * 1 - 上传中
-     * 2 - 上传失败
+     * 1 - 初始化完成
+     * 2 - 上传中
+     * 3 - 暂停上传
+     * 4 - 取消上传
+     * 5 - 上传失败
+     * 6 - 处理中
+     * 7 - 处理失败
+     * 8 - 处理完成
      */
     private String status;
 
@@ -33,11 +42,6 @@ public class FileItemVO {
      * 知识库名称
      */
     private String knowledgeBaseName;
-
-    /**
-     * 组织标签，用于标识用户所属组织（可选）
-     */
-    private String orgTag;
 
     /**
      * 是否公开：
@@ -48,15 +52,7 @@ public class FileItemVO {
 
     /**
      * 创建时间，记录文件上传请求的起始时间
-     * 自动填充：DEFAULT CURRENT_TIMESTAMP
-     * 对应字段：created_at，TIMESTAMP NOT NULL
      */
     private LocalDateTime createdAt;
 
-    /**
-     * 合并时间，分片上传时所有分片合并完成的时间
-     * 更新时自动设置为当前时间：ON UPDATE CURRENT_TIMESTAMP
-     * 对应字段：merged_at，TIMESTAMP NULL DEFAULT NULL
-     */
-    private LocalDateTime mergedAt;
 }

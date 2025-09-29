@@ -1,5 +1,6 @@
 package com.springleaf.knowseek.mapper.mysql;
 
+import com.springleaf.knowseek.model.domain.FileWithKbNameDO;
 import com.springleaf.knowseek.model.entity.FileUpload;
 import org.apache.ibatis.annotations.*;
 
@@ -57,5 +58,18 @@ public interface FileUploadMapper {
      * 根据 ID 获取文件名
      */
     String getFileNameById(Long id);
+
+    /**
+     * 分页查询文件列表，并关联知识库名称
+     * @param userId 用户ID
+     * @param fileName 文件名（模糊）
+     * @param kbName 知识库名（模糊）
+     * @return 包含知识库名称的文件列表
+     */
+    List<FileWithKbNameDO> selectPageWithKbName(@Param("userId") Long userId,
+                                                @Param("fileName") String fileName,
+                                                @Param("kbName") String kbName,
+                                                @Param("sortBy") String sortBy,
+                                                @Param("sortOrder") String sortOrder);
 }
 

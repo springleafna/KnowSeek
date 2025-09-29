@@ -6,14 +6,16 @@ import com.aliyun.oss.HttpMethod;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.*;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.config.OssConfig;
 import com.springleaf.knowseek.constans.OssUserFileKeyConstant;
 import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
-import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
 import com.springleaf.knowseek.model.bo.VectorBO;
+import com.springleaf.knowseek.model.domain.FileWithKbNameDO;
 import com.springleaf.knowseek.model.dto.*;
 import com.springleaf.knowseek.model.entity.FileUpload;
 import com.springleaf.knowseek.model.vo.FileItemVO;
@@ -33,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URL;
+import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -50,28 +53,56 @@ public class FileServiceImpl implements FileService {
     private final FileUploadMapper fileUploadMapper;
     private final EventPublisher eventPublisher;
     private final FileVectorizeEvent fileVectorizeEvent;
-    private final KnowledgeBaseMapper knowledgeBaseMapper;
 
     @Override
-    public List<FileItemVO> getFileList() {
+    public PageInfo<FileItemVO> getFileList(FilePageDTO filePageDTO) {
         long userId = StpUtil.getLoginIdAsLong();
-        List<FileUpload> fileUploads = fileUploadMapper.selectByUserId(userId);
-        if (fileUploads.isEmpty()) {
-            return Collections.emptyList();
-        }
 
-        return fileUploads.stream()
-                .map(fileUpload -> {
+        PageHelper.startPage(filePageDTO.getPageNum(), filePageDTO.getPageSize());
+
+        String sortOrder = "asc".equalsIgnoreCase(filePageDTO.getSortOrder()) ? "asc" : "desc";
+
+        // 执行查询（模糊搜索条件已在XML中处理）
+        List<FileWithKbNameDO> fileDOs = fileUploadMapper.selectPageWithKbName(
+                userId,
+                filePageDTO.getFileName(),
+                filePageDTO.getKbName(),
+                filePageDTO.getSortBy(),
+                sortOrder
+        );
+
+        // 用查询结果创建PageInfo，此时包含了分页信息
+        PageInfo<FileWithKbNameDO> doPageInfo = new PageInfo<>(fileDOs);
+
+        // 将 List<FileWithKbNameDO> 转换为 List<FileItemVO>
+        List<FileItemVO> voList = doPageInfo.getList().stream()
+                .map(fileDO -> {
                     FileItemVO fileItemVO = new FileItemVO();
-                    BeanUtils.copyProperties(fileUpload, fileItemVO);
+                    BeanUtils.copyProperties(fileDO, fileItemVO);
 
-                    UploadStatusEnum statusEnum = UploadStatusEnum.getByStatus(fileUpload.getStatus());
+                    // 根据文件名设置文件类型
+                    fileItemVO.setType(FileUtil.extractFileExtension(fileDO.getFileName()));
+
+                    // 格式化文件大小
+                    fileItemVO.setTotalSize(formatFileSize(fileDO.getTotalSize()));
+
+                    // 转换状态
+                    UploadStatusEnum statusEnum = UploadStatusEnum.getByStatus(fileDO.getStatus());
                     fileItemVO.setStatus(statusEnum != null ? statusEnum.getDescription() : "未知状态");
 
-                    fileItemVO.setKnowledgeBaseName(knowledgeBaseMapper.getNameById(fileUpload.getKnowledgeBaseId()));
+                    // 4. 设置知识库名称
+                    fileItemVO.setKnowledgeBaseName(fileDO.getKnowledgeBaseName());
+
                     return fileItemVO;
                 })
                 .collect(Collectors.toList());
+
+        // 创建VO的PageInfo并返回
+        PageInfo<FileItemVO> voPageInfo = new PageInfo<>();
+        BeanUtils.copyProperties(doPageInfo, voPageInfo);
+        voPageInfo.setList(voList);
+
+        return voPageInfo;
     }
 
     @Override
@@ -337,7 +368,6 @@ public class FileServiceImpl implements FileService {
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
 
             // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
-            // TODO：
             String userIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
             if (userIdStr == null) {
                 throw new IllegalArgumentException("userId not found");
@@ -654,5 +684,18 @@ public class FileServiceImpl implements FileService {
                     ossConfig.getBucketName(), fileKey, uploadId, e.getMessage(), e);
             throw new RuntimeException("网络或客户端错误，无法获取分片列表", e);
         }
+    }
+
+    /**
+     * 格式化文件大小
+     */
+    private String formatFileSize(long sizeInBytes) {
+        if (sizeInBytes <= 0) {
+            return "0 B";
+        }
+        final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
+        int digitGroups = (int) (Math.log10(sizeInBytes) / Math.log10(1024));
+        // 使用DecimalFormat来格式化数字，最多保留两位小数
+        return new DecimalFormat("#,##0.##").format(sizeInBytes / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
     }
 }

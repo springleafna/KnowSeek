@@ -38,8 +38,14 @@ public class FileUpload {
     /**
      * 上传状态：
      * 0 - 上传完成
-     * 1 - 上传中
-     * 2 - 上传失败
+     * 1 - 初始化完成
+     * 2 - 上传中
+     * 3 - 暂停上传
+     * 4 - 取消上传
+     * 5 - 上传失败
+     * 6 - 处理中
+     * 7 - 处理失败
+     * 8 - 处理完成
      * 对应字段：status，TINYINT NOT NULL DEFAULT 0
      */
     private Integer status;
