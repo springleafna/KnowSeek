@@ -49,11 +49,6 @@ spring:
           test-while-idle: true                 # 空闲时检测连接有效性
           test-on-borrow: false                 # 借出时不检测（性能考虑）
           test-on-create: false
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 50MB # 单个文件的最大大小
-      max-request-size: 100MB # 整个请求的最大大小
   rabbitmq:
     host: 120.26.236.122
     port: 5672
