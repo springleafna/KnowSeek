@@ -6,6 +6,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class KnowSeekApplication {
     public static void main(String[] args) {
-        SpringApplication.run(KnowSeekApplication.class);
+        SpringApplication.run(KnowSeekApplication.class, args);
     }
 }

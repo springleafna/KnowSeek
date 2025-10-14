@@ -84,7 +84,7 @@ public class FileServiceImpl implements FileService {
                     fileItemVO.setType(FileUtil.extractFileExtension(fileDO.getFileName()));
 
                     // 格式化文件大小
-                    fileItemVO.setTotalSize(formatFileSize(fileDO.getTotalSize()));
+                    fileItemVO.setTotalSize(FileUtil.formatFileSize(fileDO.getTotalSize()));
 
                     // 转换状态
                     UploadStatusEnum statusEnum = UploadStatusEnum.getByStatus(fileDO.getStatus());
@@ -283,7 +283,7 @@ public class FileServiceImpl implements FileService {
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             String extension = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "extension");
-            if (id == null || fileKey == null) {
+            if (fileKey == null) {
                 throw new BusinessException("文件上传信息不完整");
             }
             List<PartETag> partETagList;
@@ -370,19 +370,19 @@ public class FileServiceImpl implements FileService {
             // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
             String userIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
             if (userIdStr == null) {
-                throw new IllegalArgumentException("userId not found");
+                throw new IllegalArgumentException("userId 不存在");
             }
             Long userId = Long.valueOf(userIdStr.trim());
 
             String knowledgeBaseIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "knowledgeBaseId");
             if (knowledgeBaseIdStr == null) {
-                throw new IllegalArgumentException("knowledgeBaseId not found");
+                throw new IllegalArgumentException("knowledgeBaseId 不存在");
             }
             Long knowledgeBaseId = Long.valueOf(knowledgeBaseIdStr.trim());
 
             String organizationIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "organizationId");
             if (organizationIdStr == null) {
-                throw new IllegalArgumentException("organizationId not found");
+                throw new IllegalArgumentException("organizationId 不存在");
             }
             Long organizationId = Long.valueOf(organizationIdStr.trim());
 
@@ -457,7 +457,8 @@ public class FileServiceImpl implements FileService {
             if (idStr == null) {
                 throw new BusinessException("上传文件ID不存在");
             }
-            Long id = Long.valueOf(idStr);            String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
+            Long id = Long.valueOf(idStr);
+            String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             String chunkTotal = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
 
@@ -684,18 +685,5 @@ public class FileServiceImpl implements FileService {
                     ossConfig.getBucketName(), fileKey, uploadId, e.getMessage(), e);
             throw new RuntimeException("网络或客户端错误，无法获取分片列表", e);
         }
-    }
-
-    /**
-     * 格式化文件大小
-     */
-    private String formatFileSize(long sizeInBytes) {
-        if (sizeInBytes <= 0) {
-            return "0 B";
-        }
-        final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
-        int digitGroups = (int) (Math.log10(sizeInBytes) / Math.log10(1024));
-        // 使用DecimalFormat来格式化数字，最多保留两位小数
-        return new DecimalFormat("#,##0.##").format(sizeInBytes / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
     }
 }

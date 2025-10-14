@@ -3,6 +3,7 @@ package com.springleaf.knowseek.utils;
 import com.springleaf.knowseek.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -280,4 +281,16 @@ public class FileUtil {
         return new HashSet<>(SUPPORTED_DOCUMENT_EXTENSIONS);
     }
 
+    /**
+     * 格式化文件大小
+     */
+    public static String formatFileSize(long sizeInBytes) {
+        if (sizeInBytes <= 0) {
+            return "0 B";
+        }
+        final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
+        int digitGroups = (int) (Math.log10(sizeInBytes) / Math.log10(1024));
+        // 使用DecimalFormat来格式化数字，最多保留两位小数
+        return new DecimalFormat("#,##0.##").format(sizeInBytes / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+    }
 }

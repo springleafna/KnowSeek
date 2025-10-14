@@ -13,6 +13,7 @@ import com.springleaf.knowseek.model.entity.KnowledgeBase;
 import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.KnowledgeBaseVO;
 import com.springleaf.knowseek.service.KnowledgeBaseService;
+import com.springleaf.knowseek.utils.FileUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -43,10 +44,19 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                     FileItemVO fileItemVO = new FileItemVO();
                     BeanUtils.copyProperties(fileUpload, fileItemVO);
 
+                    // 根据文件名设置文件类型
+                    fileItemVO.setType(FileUtil.extractFileExtension(fileUpload.getFileName()));
+
+                    // 格式化文件大小
+                    fileItemVO.setTotalSize(FileUtil.formatFileSize(fileUpload.getTotalSize()));
+
+                    // 转换状态
                     UploadStatusEnum statusEnum = UploadStatusEnum.getByStatus(fileUpload.getStatus());
                     fileItemVO.setStatus(statusEnum != null ? statusEnum.getDescription() : "未知状态");
 
+                    // 4. 设置知识库名称
                     fileItemVO.setKnowledgeBaseName(knowledgeBaseMapper.getNameById(fileUpload.getKnowledgeBaseId()));
+
                     return fileItemVO;
                 })
                 .collect(Collectors.toList());

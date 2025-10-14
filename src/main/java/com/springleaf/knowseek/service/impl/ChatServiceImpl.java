@@ -401,10 +401,10 @@ public class ChatServiceImpl implements ChatService {
             List<VectorRecordWithDistanceBO> topChunks = chunks.stream()
                     .sorted(Comparator.comparing(VectorRecordWithDistanceBO::getDistance))
                     .limit(chunksPerFile)
-                    .collect(Collectors.toList());
+                    .toList();
 
             // 转换为原始 VectorRecord（去掉 distance）
-            selected.addAll(topChunks.stream().map(this::convertToVectorRecord).collect(Collectors.toList()));
+            selected.addAll(topChunks.stream().map(this::convertToVectorRecord).toList());
         }
 
         return selected;
@@ -429,7 +429,6 @@ public class ChatServiceImpl implements ChatService {
         record.setChunkIndex(withDist.getChunkIndex());
         record.setChunkText(withDist.getChunkText());
         record.setEmbedding(withDist.getEmbedding());
-        // 注意：VectorRecord 原始类可能没有 distance，所以不设
         return record;
     }
 }
