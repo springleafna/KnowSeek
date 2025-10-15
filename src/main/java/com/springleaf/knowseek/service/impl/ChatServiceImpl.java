@@ -35,11 +35,13 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -106,7 +108,11 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public SseEmitter streamChat(ChatRequestDTO requestDTO) {
-        SseEmitter emitter = new SseEmitter(60000L);
+        SseEmitter emitter = new SseEmitter(600000L);
+
+        // 使用 AtomicReference 来持有 Disposable 对象，以便在回调中访问
+        final AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
+        final StringBuilder fullResponse = new StringBuilder();
 
         try {
             Long currentUserId = StpUtil.getLoginIdAsLong();
@@ -159,7 +165,7 @@ public class ChatServiceImpl implements ChatService {
                 searchBO.setQueryVector(queryVector);
 
                 // 执行检索
-                List<VectorRecord> relevantRecords = performEnhancedRetrieval(searchBO, queryVector);
+                List<VectorRecord> relevantRecords = performEnhancedRetrieval(searchBO);
 
                 // 构建知识上下文并加入 messages
                 if (!relevantRecords.isEmpty()) {
@@ -196,74 +202,90 @@ public class ChatServiceImpl implements ChatService {
             Prompt prompt = new Prompt(messages);
             Flux<ChatResponse> responseFlux = chatModel.stream(prompt);
 
-            StringBuilder fullResponse = new StringBuilder();
-
-            // 添加连接超时和错误处理
-            emitter.onTimeout(() -> {
-                // 连接超时时也保存已接收的内容
-                if (!fullResponse.isEmpty()) {
-                    saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
+            // 这个任务会在 SSE 连接终止时执行
+            Runnable cleanupAndSave = () -> {
+                log.info("SSE connection for session {} is closing. Disposing AI model subscription.", sessionId);
+                Disposable subscription = subscriptionRef.get();
+                if (subscription != null && !subscription.isDisposed()) {
+                    subscription.dispose(); // 取消对AI模型的订阅
                 }
-            });
 
-            emitter.onError((throwable) -> {
-                // 连接错误时也保存已接收的内容
+                // 保存已收到的部分或全部回复
                 if (!fullResponse.isEmpty()) {
                     saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
-                }
-            });
-
-            emitter.onCompletion(() -> {
-                // 连接完成时保存内容（包括用户主动断开）
-                if (!fullResponse.isEmpty()) {
-                    saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
-
-                    // 如果是用户的第一次提问，生成会话标题
                     if (isFirstMessage) {
                         generateAndUpdateSessionTitle(sessionId, requestDTO.getMessage(), currentUserId);
                     }
                 }
+            };
+
+            // 将清理任务注册到 SseEmitter 的终止事件上
+            emitter.onCompletion(cleanupAndSave);
+            emitter.onTimeout(cleanupAndSave);
+            emitter.onError((throwable) -> {
+                log.error("SSE emitter for session {} encountered an error.", sessionId, throwable);
+                // onError 也会隐式触发 onCompletion, 但为了明确和记录日志，这里单独处理
+                cleanupAndSave.run();
             });
 
-            responseFlux.subscribe(
-                chatResponse -> {
-                    try {
-                        String content = chatResponse.getResult().getOutput().getText();
-                        fullResponse.append(content);
+            // 订阅AI模型流，并将订阅对象保存到 AtomicReference
+            Disposable disposable = responseFlux.subscribe(
+                    // 1. onNext: 接收到新数据块时的处理
+                    chatResponse -> {
+                        try {
+                            String content = chatResponse.getResult().getOutput().getText();
+                            if (content == null) return; // 有时模型会返回 null content
 
-                        // 输出安全检测
-                        if (PromptSecurityGuardUtil.isOutputUnsafe(content)) {
-                            log.warn("检测到不安全的模型输出，替换为安全响应。");
-                            content = PromptSecurityGuardUtil.SAFE_FALLBACK_RESPONSE;
-                            fullResponse.setLength(0); // 清空已拼接内容
                             fullResponse.append(content);
+
+                            // 输出安全检测
+                            if (PromptSecurityGuardUtil.isOutputUnsafe(content)) {
+                                log.warn("Detected unsafe model output, replacing with fallback response.");
+                                content = PromptSecurityGuardUtil.SAFE_FALLBACK_RESPONSE;
+                                fullResponse.setLength(0);
+                                fullResponse.append(content);
+                            }
+
+                            ChatResponseVO responseVO = new ChatResponseVO();
+                            responseVO.setMessage(content);
+                            responseVO.setSessionId(sessionId);
+                            responseVO.setTimestamp(LocalDateTime.now());
+                            responseVO.setRole("assistant");
+                            responseVO.setFromKnowledgeBase(useKnowledgeBase);
+
+                            // 发送事件到客户端
+                            emitter.send(SseEmitter.event().data(responseVO));
+
+                            // 如果检测到不安全内容，则发送后立即终止
+                            if (PromptSecurityGuardUtil.SAFE_FALLBACK_RESPONSE.equals(content)) {
+                                emitter.complete();
+                            }
+
+                        } catch (IOException e) {
+                            // 这个异常通常在客户端关闭连接后，后端再尝试 send 时抛出
+                            log.warn("Failed to send SSE message to client for session {}, likely client disconnected.", sessionId);
+                            // 不需要手动调用 cleanupAndSave.run()，因为 emitter 的 onError/onCompletion 会被自动触发
+                            // 直接 re-throw 或者包装成一个 RuntimeException 来终止流
+                            throw new RuntimeException("Client disconnected", e);
                         }
-
-                        ChatResponseVO responseVO = new ChatResponseVO();
-                        responseVO.setMessage(content);
-                        responseVO.setSessionId(sessionId);
-                        responseVO.setTimestamp(LocalDateTime.now());
-                        responseVO.setRole("assistant");
-                        responseVO.setFromKnowledgeBase(false);
-
-                        emitter.send(SseEmitter.event().data(responseVO));
-                    } catch (IOException e) {
-                        log.error("发送SSE消息失败", e);
-                        emitter.completeWithError(e);
+                    },
+                    // 2. onError: AI模型流发生错误时的处理
+                    error -> {
+                        log.error("AI model stream for session {} failed.", sessionId, error);
+                        emitter.completeWithError(error); // 这会触发 emitter 的 onCompletion/onError 回调
+                    },
+                    // 3. onComplete: AI模型流正常结束时的处理
+                    () -> {
+                        log.info("AI model stream for session {} completed successfully.", sessionId);
+                        emitter.complete(); // 这会触发 emitter 的 onCompletion 回调
                     }
-                },
-                error -> {
-                    log.error("流式对话失败", error);
-                    // 错误时也尝试保存已有内容
-                    if (!fullResponse.isEmpty()) {
-                        saveAssistantMessage(sessionId, fullResponse.toString(), currentUserId);
-                    }
-                    emitter.completeWithError(error);
-                },
-                    emitter::complete
             );
+
+            // 将创建的订阅关系存入引用，以便回调函数可以访问并取消它
+            subscriptionRef.set(disposable);
+
         } catch (Exception e) {
-            log.error("启动流式对话失败", e);
+            log.error("Failed to initialize stream chat for session {}.", requestDTO.getSessionId(), e);
             emitter.completeWithError(e);
         }
 
@@ -363,7 +385,7 @@ public class ChatServiceImpl implements ChatService {
         return StringUtils.defaultIfBlank(fileName, "未知文件_" + fileId);
     }
 
-    private List<VectorRecord> performEnhancedRetrieval(VectorRecordSearchBO searchBO, float[] queryVector) {
+    private List<VectorRecord> performEnhancedRetrieval(VectorRecordSearchBO searchBO) {
         // Step 1: 召回候选（带 distance）
         List<VectorRecordWithDistanceBO> candidates = vectorRecordMapper.findTopKByEmbeddingWithDistance(searchBO);
 
