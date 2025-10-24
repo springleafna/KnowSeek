@@ -7,6 +7,7 @@ import com.springleaf.knowseek.model.dto.UserRegisterDTO;
 import com.springleaf.knowseek.model.vo.UserInfoVO;
 import com.springleaf.knowseek.model.vo.UserListVO;
 import com.springleaf.knowseek.model.vo.UserLoginVO;
+import jakarta.validation.constraints.NotNull;
 
 public interface UserService {
 
@@ -39,4 +40,14 @@ public interface UserService {
      * @return 分页用户列表
      */
     PageInfo<UserListVO> listUsers(UserPageDTO pageDTO);
+
+    /**
+     * Admin：重置用户密码
+     */
+    void resetPassword(Long id);
+
+    /**
+     * Admin：删除用户
+     */
+    void deleteUser(Long id);
 }

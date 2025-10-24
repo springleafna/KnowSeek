@@ -11,6 +11,7 @@ import com.springleaf.knowseek.model.vo.UserListVO;
 import com.springleaf.knowseek.model.vo.UserLoginVO;
 import com.springleaf.knowseek.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,5 +66,25 @@ public class UserController {
     public Result<PageInfo<UserListVO>> listUsers(@Valid UserPageDTO pageDTO) {
         PageInfo<UserListVO> pageInfo = userService.listUsers(pageDTO);
         return Result.success(pageInfo);
+    }
+
+    /**
+     * Admin：重置用户密码
+     */
+    @SaCheckRole("admin")
+    @PutMapping("/resetPassword")
+    public Result<Void> resetPassword(@NotNull(message = "用户Id不能为空") @RequestParam Long id) {
+        userService.resetPassword(id);
+        return Result.success();
+    }
+
+    /**
+     * Admin：删除用户
+     */
+    @SaCheckRole("admin")
+    @DeleteMapping("/delete")
+    public Result<Void> deleteUser(@NotNull(message = "用户Id不能为空") @RequestParam Long id) {
+        userService.deleteUser(id);
+        return Result.success();
     }
 }

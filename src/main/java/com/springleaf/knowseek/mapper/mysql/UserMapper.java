@@ -70,4 +70,9 @@ public interface UserMapper {
      * 设置主知识库ID
      */
     void setPrimaryKnowledgeBaseId(@Param("knowledgeBaseId") Long knowledgeBaseId, @Param("userId") Long userId);
+
+    /**
+     * 重置用户密码
+     */
+    void resetPassword(@Param("userId") Long userId, @Param("password") String password);
 }

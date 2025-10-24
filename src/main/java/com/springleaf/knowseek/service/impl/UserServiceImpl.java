@@ -187,4 +187,22 @@ public class UserServiceImpl implements UserService {
         
         return pageInfo;
     }
+
+    @Override
+    public void resetPassword(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        userMapper.resetPassword(id, PasswordUtil.encryptPassword("123456"));
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        userMapper.deleteById(id);
+    }
 }

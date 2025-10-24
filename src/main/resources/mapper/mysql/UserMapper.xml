@@ -109,4 +109,12 @@
         WHERE id = #{id}
     </delete>
 
+    <!--重置用户密码-->
+    <update id="resetPassword">
+        UPDATE tb_usr
+        set password = #{password}
+        WHERE id = #{userId}
+        AND deleted = 0
+    </update>
+
 </mapper>
