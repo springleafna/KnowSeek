@@ -111,7 +111,7 @@
 
     <!--重置用户密码-->
     <update id="resetPassword">
-        UPDATE tb_usr
+        UPDATE tb_user
         set password = #{password}
         WHERE id = #{userId}
         AND deleted = 0
