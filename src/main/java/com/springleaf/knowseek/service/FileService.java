@@ -7,9 +7,6 @@ import com.springleaf.knowseek.model.vo.UploadCompleteVO;
 import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.model.vo.UploadProgressVO;
 
-import java.io.IOException;
-import java.util.List;
-
 public interface FileService {
 
     /**
@@ -51,4 +48,9 @@ public interface FileService {
      * 恢复上传
      */
     UploadInitVO resumeUpload(FileUploadPauseDTO fileUploadPauseDTO);
+
+    /**
+     * 删除文件
+     */
+    void deleteFile(Long id);
 }

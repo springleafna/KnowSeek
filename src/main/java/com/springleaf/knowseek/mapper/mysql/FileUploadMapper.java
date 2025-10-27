@@ -71,5 +71,15 @@ public interface FileUploadMapper {
                                                 @Param("kbName") String kbName,
                                                 @Param("sortBy") String sortBy,
                                                 @Param("sortOrder") String sortOrder);
+
+    /**
+     * 删除文件
+     */
+    void deleteFile(@Param("id") Long id);
+
+    /**
+     * 根据文件 ID 获取文件
+     */
+    FileUpload getFileById(Long id);
 }
 

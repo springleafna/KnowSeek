@@ -7,7 +7,6 @@ import com.springleaf.knowseek.model.dto.UserRegisterDTO;
 import com.springleaf.knowseek.model.vo.UserInfoVO;
 import com.springleaf.knowseek.model.vo.UserListVO;
 import com.springleaf.knowseek.model.vo.UserLoginVO;
-import jakarta.validation.constraints.NotNull;
 
 public interface UserService {
 

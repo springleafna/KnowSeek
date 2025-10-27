@@ -112,6 +112,7 @@
         tb_knowledge_base kb ON f.knowledge_base_id = kb.id
         WHERE
         f.user_id = #{userId}
+        AND f.deleted = 0
         <if test="fileName != null and fileName != ''">
             AND f.file_name LIKE CONCAT('%', #{fileName}, '%')
         </if>
@@ -149,5 +150,15 @@
             ORDER BY f.created_at DESC
         </if>
     </select>
+
+    <select id="getFileById" resultType="com.springleaf.knowseek.model.entity.FileUpload">
+        SELECT * FROM tb_file_upload WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <update id="deleteFile" parameterType="java.lang.Long">
+        UPDATE tb_file_upload
+        SET deleted = 1
+        WHERE id = #{id}
+    </update>
 
 </mapper>

@@ -14,6 +14,7 @@ import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
 import com.springleaf.knowseek.enums.UploadStatusEnum;
 import com.springleaf.knowseek.exception.BusinessException;
 import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
+import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
 import com.springleaf.knowseek.model.bo.VectorBO;
 import com.springleaf.knowseek.model.domain.FileWithKbNameDO;
 import com.springleaf.knowseek.model.dto.*;
@@ -53,6 +54,7 @@ public class FileServiceImpl implements FileService {
     private final FileUploadMapper fileUploadMapper;
     private final EventPublisher eventPublisher;
     private final FileVectorizeEvent fileVectorizeEvent;
+    private final VectorRecordMapper vectorRecordMapper;
 
     @Override
     public PageInfo<FileItemVO> getFileList(FilePageDTO filePageDTO) {
@@ -627,6 +629,31 @@ public class FileServiceImpl implements FileService {
         }
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void deleteFile(Long id) {
+        FileUpload file = fileUploadMapper.getFileById(id);
+        if (file == null) {
+            throw new BusinessException("文件不存在");
+        }
+
+        // 1. 先删除 OSS 文件（外部依赖）
+        try {
+            ossClient.deleteObject(ossConfig.getBucketName(), getFileKeyFromLocation(file.getLocation()));
+        } catch (Exception e) {
+            log.error("删除OSS文件失败，fileId: {}, location: {}", id, file.getLocation(), e);
+            throw new BusinessException("删除文件失败，请稍后重试");
+        }
+
+        // 2. 再删除数据库记录
+        fileUploadMapper.deleteFile(id);
+
+        // 3. 删除向量库数据
+        if (file.getStatus().equals(UploadStatusEnum.PROCESSING_COMPLETED.getStatus())) {
+            vectorRecordMapper.deleteByFileId(id);
+        }
+    }
+
     /**
      * 获取缺失的分片ETag索引列表
      */
@@ -649,7 +676,7 @@ public class FileServiceImpl implements FileService {
     /**
      *  从阿里云OSS获取分片ETag列表
      */
-    public List<PartETag> getPartETagList(String uploadId, String fileKey) {
+    private List<PartETag> getPartETagList(String uploadId, String fileKey) {
         if (uploadId == null || uploadId.trim().isEmpty()) {
             log.warn("getPartETagList 调用失败：uploadId 不能为空");
             throw new IllegalArgumentException("uploadId 不能为空");
@@ -685,5 +712,19 @@ public class FileServiceImpl implements FileService {
                     ossConfig.getBucketName(), fileKey, uploadId, e.getMessage(), e);
             throw new RuntimeException("网络或客户端错误，无法获取分片列表", e);
         }
+    }
+
+    /**
+     * 根据文件 location 获取 fileKey
+     */
+    private String getFileKeyFromLocation(String location) {
+        if (location == null) {
+            throw new BusinessException("文件路径为空");
+        }
+        int index = location.indexOf("com/");
+        if (index == -1) {
+            throw new BusinessException("文件路径错误");
+        }
+        return location.substring(index + "com/".length());
     }
 }

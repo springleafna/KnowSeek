@@ -24,7 +24,7 @@ public class PromptSecurityGuardUtil {
             "forget all", "forget everything", "disregard", "disregard all",
             "override instructions", "override all instructions", "bypass rules", "bypass all rules",
             "highest authority", "maximum privilege", "system prompt", "reveal instructions",
-            "you are now", "you're now", "act as", "扮演", "你现在是", "你現在是",
+            "you are now", "you're now", "act as", "你现在是", "你現在是",
             "忽略以上", "忽略之前", "清除记忆", "最高指令权限", "获取最高权限",
             "do not follow", "不要遵守", "skip the rules", "break the rules",
             "output the system message", "show me the prompt", "泄露提示词",
@@ -43,10 +43,11 @@ public class PromptSecurityGuardUtil {
             Pattern.compile("(?i)(从现在开始|从此刻起).*不再"),
             Pattern.compile("(?i)(you|your).*no longer.*(ai|assistant)"),
 
-            // 角色劫持检测
+            // 角色劫持检测 —— 仅当“扮演”用于指令模型时触发
             Pattern.compile("(?i)(act as|pretend to be|play the role of|you are now)\\s+[^.]"),
-            Pattern.compile("(?i)(扮演|充当|作为).*[^.]"),
-
+            Pattern.compile("(?i)^(你|请|要求你|命令你|现在你|从现在起你).*?(扮演|充当|作为)\\s+[^。！？.!?]*[。！？.!?]?"),
+            Pattern.compile("(?i)([你请]).*?(是|成为|变身)\\s+(一个?)?\\s*(AI|助手|医生|专家|黑客|系统|管理员|上帝|角色)"),
+            Pattern.compile("(?i)^\\s*(扮演|充当|作为)\\s+(一个?)?\\s*(AI|助手|医生|专家|黑客|系统|角色|身份)"),
             // 指令覆盖检测
             Pattern.compile("(?i)(override|replace|change)\\s+(the\\s+)?instructions?"),
             Pattern.compile("(?i)(最高|最大).*权限"),
@@ -67,7 +68,7 @@ public class PromptSecurityGuardUtil {
             Pattern.compile("(?i)(ignore|forget).*?(instruction|rule).*?(and|then)"),
 
             // 检测格式化输出强制要求
-            Pattern.compile("(?i)(always|every time|only).*?(output|respond).*?\\{.*?\\}")
+            Pattern.compile("(?i)(always|every time|only).*?(output|respond).*?\\{.*?}")
     );
 
     // =============== 4. 检测方法 ===============
@@ -183,7 +184,7 @@ public class PromptSecurityGuardUtil {
     }
 
     private static boolean containsFormatDemand(String text) {
-        return text.matches("(?i).*(always|only|必须|只能).*(output|respond|输出).*\\{.*\\}.*");
+        return text.matches("(?i).*(always|only|必须|只能).*(output|respond|输出).*\\{.*}.*");
     }
 
     // =============== 5. 系统提示词构建 ===============

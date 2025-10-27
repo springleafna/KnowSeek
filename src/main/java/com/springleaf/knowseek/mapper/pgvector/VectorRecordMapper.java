@@ -3,6 +3,7 @@ package com.springleaf.knowseek.mapper.pgvector;
 import com.springleaf.knowseek.model.bo.VectorRecordSearchBO;
 import com.springleaf.knowseek.model.bo.VectorRecordWithDistanceBO;
 import com.springleaf.knowseek.model.entity.VectorRecord;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -18,4 +19,10 @@ public interface VectorRecordMapper {
 
     List<VectorRecord> findTopKByEmbedding(VectorRecordSearchBO record);
 
-    List<VectorRecordWithDistanceBO> findTopKByEmbeddingWithDistance(VectorRecordSearchBO searchBO);}
+    List<VectorRecordWithDistanceBO> findTopKByEmbeddingWithDistance(VectorRecordSearchBO searchBO);
+
+    /**
+     * 根据文件 ID 删除向量数据
+     */
+    void deleteByFileId(@Param("id") Long id);
+}

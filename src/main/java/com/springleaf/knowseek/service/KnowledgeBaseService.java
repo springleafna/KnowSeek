@@ -4,7 +4,6 @@ import com.springleaf.knowseek.model.dto.KnowledgeBaseCreateDTO;
 import com.springleaf.knowseek.model.dto.KnowledgeBaseUpdateDTO;
 import com.springleaf.knowseek.model.vo.FileItemVO;
 import com.springleaf.knowseek.model.vo.KnowledgeBaseVO;
-import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 

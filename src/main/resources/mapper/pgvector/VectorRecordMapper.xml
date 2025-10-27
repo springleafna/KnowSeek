@@ -86,10 +86,17 @@
             )
             SELECT *
             FROM candidates
-            WHERE distance < 0.92
+            WHERE distance < 1.10
             ORDER BY distance
             LIMIT 15
         ]]>
     </select>
+
+    <update id="deleteByFileId" parameterType="java.lang.Long">
+        UPDATE tb_vector_record
+        SET deleted = true
+        WHERE file_id = #{id}
+        AND deleted = false
+    </update>
 
 </mapper>

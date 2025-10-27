@@ -9,6 +9,7 @@ import com.springleaf.knowseek.model.vo.UploadInitVO;
 import com.springleaf.knowseek.model.vo.UploadProgressVO;
 import com.springleaf.knowseek.service.FileService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,15 @@ public class FileController {
     public Result<PageInfo<FileItemVO>> getFileList(FilePageDTO filePageDTO) {
         PageInfo<FileItemVO> pageInfo = fileService.getFileList(filePageDTO);
         return Result.success(pageInfo);
+    }
+
+    /**
+     * 删除文件
+     */
+    @DeleteMapping("/delete")
+    public Result<Void> deleteFile(@NotNull(message = "文件ID不能为空") @RequestParam Long id) {
+        fileService.deleteFile(id);
+        return Result.success();
     }
 
     /**
