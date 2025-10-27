@@ -116,7 +116,7 @@ sa-token:
 # 阿里云OSS配置
 aliyun:
   oss:
-    endpoint: oss-cn-hangzhou.aliyuncs.com
+    endpoint: https://oss-cn-hangzhou.aliyuncs.com
     bucket-name: know-seek-bucket
     # 分片预签名URL过期时间（单位：秒）
     presigned-url-expiration: 900

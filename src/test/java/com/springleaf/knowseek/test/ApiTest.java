@@ -8,7 +8,9 @@ import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
 import com.springleaf.knowseek.constans.UploadRedisKeyConstant;
 import com.springleaf.knowseek.handler.VectorTypeHandler;
+import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
 import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
+import com.springleaf.knowseek.model.entity.FileUpload;
 import com.springleaf.knowseek.model.entity.VectorRecord;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,14 @@ public class ApiTest {
     private EmbeddingModel embeddingModel;
     @Resource
     private VectorRecordMapper vectorRecordMapper;
+    @Resource
+    private FileUploadMapper fileUploadMapper;
+
+    @Test
+    void testGetFileName() {
+        FileUpload file = fileUploadMapper.getFileById(52L);
+        System.out.println("fileName:" + file.getFileName());
+    }
 
     @Test
     void testVectorRoundTrip() throws SQLException {

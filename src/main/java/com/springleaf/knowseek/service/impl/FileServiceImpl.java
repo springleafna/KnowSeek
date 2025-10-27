@@ -36,7 +36,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URL;
-import java.text.DecimalFormat;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -395,7 +396,7 @@ public class FileServiceImpl implements FileService {
                     .userId(userId)
                     .build();
 
-            FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage =  FileVectorizeEvent.FileVectorizeMessage
+            FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage = FileVectorizeEvent.FileVectorizeMessage
                     .builder()
                     .vectorBO(vectorBO)
                     .location(location)
@@ -571,8 +572,8 @@ public class FileServiceImpl implements FileService {
             }
 
             if (!fileUpload.getStatus().equals(UploadStatusEnum.PAUSED.getStatus()) &&
-                !fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus()) &&
-                !fileUpload.getStatus().equals(UploadStatusEnum.INITIALIZED.getStatus())) {
+                    !fileUpload.getStatus().equals(UploadStatusEnum.UPLOADING.getStatus()) &&
+                    !fileUpload.getStatus().equals(UploadStatusEnum.INITIALIZED.getStatus())) {
                 throw new BusinessException("当前文件状态不允许恢复上传");
             }
 
@@ -636,9 +637,11 @@ public class FileServiceImpl implements FileService {
         if (file == null) {
             throw new BusinessException("文件不存在");
         }
-
         // 1. 先删除 OSS 文件（外部依赖）
         try {
+            if (file.getLocation() == null) {
+                throw new BusinessException("文件地址不存在");
+            }
             ossClient.deleteObject(ossConfig.getBucketName(), getFileKeyFromLocation(file.getLocation()));
         } catch (Exception e) {
             log.error("删除OSS文件失败，fileId: {}, location: {}", id, file.getLocation(), e);
@@ -651,6 +654,55 @@ public class FileServiceImpl implements FileService {
         // 3. 删除向量库数据
         if (file.getStatus().equals(UploadStatusEnum.PROCESSING_COMPLETED.getStatus())) {
             vectorRecordMapper.deleteByFileId(id);
+        }
+    }
+
+    @Override
+    public String downloadFile(Long id) {
+        FileUpload file = fileUploadMapper.getFileById(id);
+        if (file == null) {
+            throw new BusinessException("文件不存在");
+        }
+        if (file.getLocation() == null) {
+            throw new BusinessException("文件未上传成功，无法下载");
+        }
+
+        String fileName = file.getFileName();
+        String objectKey = getFileKeyFromLocation(file.getLocation());
+        long expireSeconds = ossConfig.getPresignedUrlExpiration();
+        Date expiration = new Date(System.currentTimeMillis() + expireSeconds * 1000);
+
+        if (fileName == null || fileName.isBlank()) {
+            objectKey = getFileKeyFromLocation(file.getLocation());
+            String ext = objectKey.contains(".") ? objectKey.substring(objectKey.lastIndexOf(".")) : "";
+            fileName = "download" + ext;
+        }
+
+        try {
+            // 使用 GeneratePresignedUrlRequest 支持设置响应头
+            GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(
+                    ossConfig.getBucketName(),
+                    objectKey,
+                    HttpMethod.GET
+            );
+            request.setExpiration(expiration);
+
+            // 通过 response-content-disposition 指定下载文件名（支持中文）
+            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                    .replaceAll("\\+", "%20"); // 避免 + 号问题
+            ResponseHeaderOverrides responseHeaderOverrides = new ResponseHeaderOverrides();
+            responseHeaderOverrides.setContentDisposition("attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
+            request.setResponseHeaders(responseHeaderOverrides);
+
+            URL url = ossClient.generatePresignedUrl(request);
+            return url.toString();
+        } catch (OSSException oe) {
+            log.error("OSS 服务端错误: code={}, message={}, requestId={}",
+                    oe.getErrorCode(), oe.getErrorMessage(), oe.getRequestId());
+            throw new BusinessException("文件下载链接生成失败，请稍后重试。" + oe); // 保留原始异常
+        } catch (ClientException ce) {
+            log.error("OSS 客户端错误: {}", ce.getMessage(), ce);
+            throw new BusinessException("网络异常，无法生成下载链接。" + ce);
         }
     }
 

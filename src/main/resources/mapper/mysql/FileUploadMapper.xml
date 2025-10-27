@@ -151,7 +151,7 @@
         </if>
     </select>
 
-    <select id="getFileById" resultType="com.springleaf.knowseek.model.entity.FileUpload">
+    <select id="getFileById" resultType="com.springleaf.knowseek.model.entity.FileUpload" resultMap="resultMap">
         SELECT * FROM tb_file_upload WHERE id = #{id} AND deleted = 0
     </select>
 

@@ -53,4 +53,9 @@ public interface FileService {
      * 删除文件
      */
     void deleteFile(Long id);
+
+    /**
+     * 文件下载
+     */
+    String downloadFile(Long id);
 }

@@ -99,4 +99,12 @@ public class FileController {
         fileService.cancelUpload(fileUploadCancelDTO);
         return Result.success();
     }
+
+    /**
+     * 文件下载
+     */
+    @GetMapping("/download")
+    public Result<String> downloadFile(@NotNull(message = "文件ID不能为为空") @RequestParam Long id) {
+        return Result.success(fileService.downloadFile(id));
+    }
 }
