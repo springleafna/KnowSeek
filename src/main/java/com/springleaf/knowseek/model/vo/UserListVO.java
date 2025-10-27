@@ -2,6 +2,8 @@ package com.springleaf.knowseek.model.vo;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /**
  * 用户列表VO
  */
@@ -27,4 +29,9 @@ public class UserListVO {
      * 用户主组织名称
      */
     private String primaryOrgName;
+
+    /**
+     * 用户注册时间
+     */
+    private LocalDateTime createdAt;
 }

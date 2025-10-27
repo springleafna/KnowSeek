@@ -167,6 +167,7 @@ public class UserServiceImpl implements UserService {
             vo.setId(user.getId());
             vo.setUsername(user.getUsername());
             vo.setRole(user.getRole());
+            vo.setCreatedAt(user.getCreatedAt());
             
             // 获取主组织名称
             Long primaryOrgId = user.getPrimaryOrgId();

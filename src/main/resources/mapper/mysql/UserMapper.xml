@@ -39,7 +39,13 @@
         SELECT <include refid="Base_Column_List" />
         FROM tb_user
         WHERE deleted = 0
-        ORDER BY created_at DESC
+        ORDER BY
+        CASE role
+        WHEN 'ADMIN' THEN 0
+        WHEN 'USER'  THEN 1
+        ELSE 2
+        END,
+        created_at DESC
     </select>
     
     <!-- 根据用户名模糊查询用户 -->
