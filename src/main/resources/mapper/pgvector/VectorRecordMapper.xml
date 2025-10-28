@@ -92,11 +92,10 @@
         ]]>
     </select>
 
-    <update id="deleteByFileId" parameterType="java.lang.Long">
-        UPDATE tb_vector_record
-        SET deleted = true
+    <delete id="deleteByFileId" parameterType="java.lang.Long">
+        delete tb_vector_record
         WHERE file_id = #{id}
-        AND deleted = false
-    </update>
+        AND deleted = true
+    </delete>
 
 </mapper>

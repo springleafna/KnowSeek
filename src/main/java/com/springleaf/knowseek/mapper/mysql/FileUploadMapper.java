@@ -75,7 +75,7 @@ public interface FileUploadMapper {
     /**
      * 删除文件
      */
-    void deleteFile(@Param("id") Long id);
+    void deleteByFileId(@Param("id") Long id);
 
     /**
      * 根据文件 ID 获取文件
