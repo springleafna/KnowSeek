@@ -637,7 +637,7 @@ public class FileServiceImpl implements FileService {
         if (file == null) {
             throw new BusinessException("文件不存在");
         }
-        // 1. 先删除 OSS 文件（外部依赖）
+        // 1. 删除 OSS 文件（外部依赖）
         try {
             if (file.getLocation() == null) {
                 throw new BusinessException("文件地址不存在");
@@ -648,13 +648,11 @@ public class FileServiceImpl implements FileService {
             throw new BusinessException("删除文件失败，请稍后重试");
         }
 
-        // 2. 再删除数据库记录
+        // 2. 删除数据库记录
         fileUploadMapper.deleteFile(id);
 
         // 3. 删除向量库数据
-        if (file.getStatus().equals(UploadStatusEnum.PROCESSING_COMPLETED.getStatus())) {
-            vectorRecordMapper.deleteByFileId(id);
-        }
+        vectorRecordMapper.deleteByFileId(id);
     }
 
     @Override

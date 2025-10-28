@@ -8,10 +8,13 @@ import com.springleaf.knowseek.model.bo.VectorBO;
 import com.springleaf.knowseek.mq.event.BaseEvent;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
 import com.springleaf.knowseek.service.EmbeddingService;
-import com.springleaf.knowseek.service.FileService;
 import com.springleaf.knowseek.service.VectorRecordService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.tika.Tika;
 import org.springframework.amqp.rabbit.annotation.Argument;
 import org.springframework.amqp.rabbit.annotation.Queue;
@@ -21,10 +24,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -196,11 +205,13 @@ public class FileVectorizeConsumer {
      * 流式下载和分块处理
      */
     private void downloadAndChunkStreaming(String fileUrl, String extension, BlockingQueue<String> chunkQueue) {
+        HttpURLConnection connection;
+
         try {
             log.info("开始流式下载和解析文件: {}", fileUrl);
 
             URL url = new URL(fileUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
@@ -211,6 +222,10 @@ public class FileVectorizeConsumer {
                     // 对于纯文本，使用最高效的逐行读取流式处理
                     log.info("文件类型 '{}'，采用纯文本流式处理。", extension);
                     processPlainTextStream(inputStream, chunkQueue);
+                } else if (extension.equalsIgnoreCase("pdf")) {
+                    // 对于PDF，使用临时文件方式处理大文件
+                    log.info("文件类型 '{}'，使用 Apache PDFBox 进行解析。", extension);
+                    processPdfStream(inputStream, chunkQueue);
                 } else {
                     // 对于其他所有复杂格式，使用 Apache Tika 进行解析
                     log.info("文件类型 '{}'，采用 Apache Tika 解析。", extension);
@@ -263,6 +278,56 @@ public class FileVectorizeConsumer {
 
         // 对提取出的完整文本进行分块
         chunkExtractedText(extractedText, chunkQueue);
+    }
+
+    /**
+     * 提取 pdf 文本
+     */
+    private void processPdfStream(InputStream inputStream, BlockingQueue<String> chunkQueue) throws IOException {
+        Path tempFile = null;
+
+        try {
+            // 创建临时文件
+            tempFile = Files.createTempFile("pdf_processing_", ".pdf");
+            log.debug("创建临时PDF文件: {}", tempFile);
+
+            // 将输入流复制到临时文件
+            Files.copy(inputStream, tempFile, StandardCopyOption.REPLACE_EXISTING);
+
+            // 从临时文件加载PDF
+            try (PDDocument document = Loader.loadPDF(tempFile.toFile())) {
+                PDFTextStripper stripper = new PDFTextStripper();
+                int totalPages = document.getNumberOfPages();
+
+                log.info("开始解析PDF，总页数: {}", totalPages);
+
+                for (int page = 1; page <= totalPages; page++) {
+                    stripper.setStartPage(page);
+                    stripper.setEndPage(page);
+                    String pageText = stripper.getText(document);
+                    if (pageText != null && !pageText.trim().isEmpty()) {
+                        chunkExtractedText(pageText, chunkQueue);
+                        log.debug("已处理第 {} 页，文本长度: {}", page, pageText.length());
+                    }
+
+                    // 定期提示进度
+                    if (page % 10 == 0) {
+                        log.info("当前进度： {}/{} 页", page, totalPages);
+                    }
+                }
+                log.info("PDF解析完成，共处理 {} 页", totalPages);
+            }
+        } finally {
+            // 清理临时文件
+            if (tempFile != null) {
+                try {
+                    Files.deleteIfExists(tempFile);
+                    log.debug("已清理临时文件: {}", tempFile);
+                } catch (IOException e) {
+                    log.warn("无法删除临时文件: {}", tempFile, e);
+                }
+            }
+        }
     }
 
     /**
