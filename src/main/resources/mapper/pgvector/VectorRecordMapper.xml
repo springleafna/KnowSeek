@@ -93,7 +93,7 @@
     </select>
 
     <delete id="deleteByFileId" parameterType="java.lang.Long">
-        delete tb_vector_record
+        delete from tb_vector_record
         WHERE file_id = #{id}
         AND deleted = true
     </delete>

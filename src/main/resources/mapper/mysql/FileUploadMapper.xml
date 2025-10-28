@@ -156,7 +156,7 @@
     </select>
 
     <delete id="deleteByFileId" parameterType="java.lang.Long">
-        delete tb_file_upload
+        delete from tb_file_upload
         WHERE id = #{id}
         AND deleted = 0
     </delete>
