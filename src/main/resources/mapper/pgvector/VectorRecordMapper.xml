@@ -88,14 +88,14 @@
             FROM candidates
             WHERE distance < 1.10
             ORDER BY distance
-            LIMIT 15
+            LIMIT #{topK}
         ]]>
     </select>
 
     <delete id="deleteByFileId" parameterType="java.lang.Long">
         delete from tb_vector_record
         WHERE file_id = #{id}
-        AND deleted = true
+        AND deleted = false
     </delete>
 
 </mapper>

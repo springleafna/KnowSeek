@@ -37,6 +37,11 @@ public class ApiTest {
     private FileUploadMapper fileUploadMapper;
 
     @Test
+    void testDeleteVectorRecord() {
+        vectorRecordMapper.deleteByFileId(62L);
+    }
+
+    @Test
     void testGetFileName() {
         FileUpload file = fileUploadMapper.getFileById(52L);
         System.out.println("fileName:" + file.getFileName());

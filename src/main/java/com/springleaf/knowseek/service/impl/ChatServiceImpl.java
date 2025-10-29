@@ -161,7 +161,7 @@ public class ChatServiceImpl implements ChatService {
                 VectorRecordSearchBO searchBO = new VectorRecordSearchBO();
                 searchBO.setUserId(currentUserId);
                 searchBO.setKnowledgeBaseId(primaryKnowledgeBaseId);
-                // searchBO.setTopK(3);
+                searchBO.setTopK(15);
                 searchBO.setQueryVector(queryVector);
 
                 // 执行检索
@@ -177,7 +177,20 @@ public class ChatServiceImpl implements ChatService {
                     // 为每个文件单独标注
                     for (Map.Entry<Long, List<VectorRecord>> entry : recordsByFile.entrySet()) {
                         String fileName = getFileDisplayName(entry.getKey());
-                        kbBuilder.append("【来源文件: ").append(fileName).append("】\n");
+
+                        // 提取当前文件中所有 chunk 的 chunkIndex
+                        String chunkIndices = entry.getValue().stream()
+                                .map(record -> String.valueOf(record.getChunkIndex()))
+                                .collect(Collectors.joining(","));
+
+                        // 拼接来源文件名 + chunk 索引
+                        kbBuilder.append("【来源文件: ").append(fileName);
+                        if (!chunkIndices.isEmpty()) {
+                            kbBuilder.append(" (chunks: ").append(chunkIndices).append(")");
+                        }
+                        kbBuilder.append("】\n");
+
+                        // 拼接 chunk 文本内容
                         for (VectorRecord record : entry.getValue()) {
                             kbBuilder.append("- ").append(record.getChunkText()).append("\n");
                         }
