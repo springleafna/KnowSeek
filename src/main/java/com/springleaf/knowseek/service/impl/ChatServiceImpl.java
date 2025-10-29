@@ -2,6 +2,7 @@ package com.springleaf.knowseek.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
+import com.springleaf.knowseek.constans.RagConstant;
 import com.springleaf.knowseek.mapper.mysql.FileUploadMapper;
 import com.springleaf.knowseek.mapper.mysql.KnowledgeBaseMapper;
 import com.springleaf.knowseek.mapper.mysql.UserMapper;
@@ -161,7 +162,7 @@ public class ChatServiceImpl implements ChatService {
                 VectorRecordSearchBO searchBO = new VectorRecordSearchBO();
                 searchBO.setUserId(currentUserId);
                 searchBO.setKnowledgeBaseId(primaryKnowledgeBaseId);
-                searchBO.setTopK(15);
+                searchBO.setTopK(RagConstant.TOPK);
                 searchBO.setQueryVector(queryVector);
 
                 // 执行检索
@@ -427,15 +428,13 @@ public class ChatServiceImpl implements ChatService {
 
         // Step 5: 选择最相关的 1~2 个文件
         List<VectorRecord> selected = new ArrayList<>();
-        int maxFiles = 2;
-        int chunksPerFile = 2; // 每个文件最多取 2 个 chunks
 
-        for (int i = 0; i < Math.min(maxFiles, fileRelevances.size()); i++) {
+        for (int i = 0; i < Math.min(RagConstant.MAX_FILES, fileRelevances.size()); i++) {
             List<VectorRecordWithDistanceBO> chunks = fileRelevances.get(i).getChunks();
             // 对该文件内的 chunks 按 distance 排序，取 top chunksPerFile
             List<VectorRecordWithDistanceBO> topChunks = chunks.stream()
                     .sorted(Comparator.comparing(VectorRecordWithDistanceBO::getDistance))
-                    .limit(chunksPerFile)
+                    .limit(RagConstant.CHUNKS_PER_FILE)
                     .toList();
 
             // 转换为原始 VectorRecord（去掉 distance）

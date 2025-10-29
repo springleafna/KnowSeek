@@ -37,7 +37,7 @@ CREATE TABLE tb_file_upload (
     merged_at    TIMESTAMP        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '合并时间',
     deleted TINYINT(1) NOT NULL DEFAULT '0' COMMENT '删除标志（0正常 1删除）',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_md5_user (file_md5, user_id),
+    UNIQUE KEY uk_md5_user (file_md5, user_id, knowledge_base_id),
     INDEX idx_user (user_id),
     INDEX idx_org_tag (org_tag)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件上传记录表';

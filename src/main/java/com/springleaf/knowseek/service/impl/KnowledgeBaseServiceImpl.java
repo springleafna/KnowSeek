@@ -54,7 +54,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                     UploadStatusEnum statusEnum = UploadStatusEnum.getByStatus(fileUpload.getStatus());
                     fileItemVO.setStatus(statusEnum != null ? statusEnum.getDescription() : "未知状态");
 
-                    // 4. 设置知识库名称
+                    // 设置知识库名称
                     fileItemVO.setKnowledgeBaseName(knowledgeBaseMapper.getNameById(fileUpload.getKnowledgeBaseId()));
 
                     return fileItemVO;
@@ -75,7 +75,14 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     @Override
     public void deleteKnowledgeBase(Long id) {
-        // 这里可以加一步权限校验，确保只有知识库所有者能删除
+        // 确保只有知识库所有者能删除
+        KnowledgeBase knowledgeBase = knowledgeBaseMapper.selectKnowledgeBaseById(id);
+        if (knowledgeBase == null) {
+            throw new BusinessException("该知识库不存在");
+        }
+        if (knowledgeBase.getUserId() != StpUtil.getLoginIdAsLong()) {
+            throw new BusinessException("只有知识库所有者能删除该知识库");
+        }
         knowledgeBaseMapper.deleteKnowledgeBaseById(id);
     }
 

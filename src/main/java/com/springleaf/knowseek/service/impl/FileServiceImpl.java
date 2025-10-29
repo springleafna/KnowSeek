@@ -370,7 +370,7 @@ public class FileServiceImpl implements FileService {
 
             log.info("合并完成，文件名：{}，uploadId：{}，文件地址：{}", fileName, uploadId, location);
 
-            // 6. 合并完成后发送 mq 消息根据 location 地址下载文件并进行文件的向量化处理
+            // 6. 合并完成后发送 mq 消息下载文件并进行文件的向量化处理
             String userIdStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "userId");
             if (userIdStr == null) {
                 throw new IllegalArgumentException("userId 不存在");
@@ -399,7 +399,7 @@ public class FileServiceImpl implements FileService {
             FileVectorizeEvent.FileVectorizeMessage fileVectorizeMessage = FileVectorizeEvent.FileVectorizeMessage
                     .builder()
                     .vectorBO(vectorBO)
-                    .location(location)
+                    .location(downloadFile(id))
                     .fileName(fileName)
                     .extension(extension)
                     .build();
@@ -637,6 +637,9 @@ public class FileServiceImpl implements FileService {
         if (file == null) {
             throw new BusinessException("文件不存在");
         }
+        if (file.getUserId() != StpUtil.getLoginIdAsLong()) {
+            throw new BusinessException("只有文件所有者能删除该文件");
+        }
         // 1. 删除 OSS 文件
         try {
             if (file.getLocation() == null) {
@@ -663,6 +666,9 @@ public class FileServiceImpl implements FileService {
         }
         if (file.getLocation() == null) {
             throw new BusinessException("文件未上传成功，无法下载");
+        }
+        if (file.getUserId() != StpUtil.getLoginIdAsLong()) {
+            throw new BusinessException("只有文件所有者能下载该文件");
         }
 
         String fileName = file.getFileName();
@@ -697,7 +703,7 @@ public class FileServiceImpl implements FileService {
         } catch (OSSException oe) {
             log.error("OSS 服务端错误: code={}, message={}, requestId={}",
                     oe.getErrorCode(), oe.getErrorMessage(), oe.getRequestId());
-            throw new BusinessException("文件下载链接生成失败，请稍后重试。" + oe); // 保留原始异常
+            throw new BusinessException("文件下载链接生成失败，请稍后重试。" + oe);
         } catch (ClientException ce) {
             log.error("OSS 客户端错误: {}", ce.getMessage(), ce);
             throw new BusinessException("网络异常，无法生成下载链接。" + ce);
