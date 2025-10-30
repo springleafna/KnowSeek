@@ -41,6 +41,8 @@ public class UserServiceImpl implements UserService {
     private final UserOrganizationMapper userOrganizationMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
 
+    private static final String DEFAULT_PASSWORD = "123456";
+
     @Override
     public UserLoginVO login(UserLoginDTO loginDTO) {
         String username = loginDTO.getUsername();
@@ -52,11 +54,9 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("用户名或密码错误");
         }
 
-        // 登录
         StpUtil.login(user.getId());
         String token = StpUtil.getTokenValue();
         
-        // 记录登录日志
         String role = user.getRole();
         if (UserRoleEnum.ADMIN.getValue().equals(role)) {
             log.info("{} 管理员登录成功", username);
@@ -81,7 +81,6 @@ public class UserServiceImpl implements UserService {
         user.setUsername(username);
         user.setPassword(PasswordUtil.encryptPassword(registerDTO.getPassword()));
         user.setRole(UserRoleEnum.USER.getValue());
-        // 执行新增用户返回用户ID
         userMapper.insert(user);
         Long newUserId = user.getId();
 
@@ -195,7 +194,7 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
-        userMapper.resetPassword(id, PasswordUtil.encryptPassword("123456"));
+        userMapper.resetPassword(id, PasswordUtil.encryptPassword(DEFAULT_PASSWORD));
     }
 
     @Override
