@@ -5,9 +5,9 @@ spring:
     time-zone: GMT+8
   datasource:
     mysql:
-      url: jdbc:mysql://120.26.236.122:33306/know_seek?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-      username: root
-      password: YOUR_ROOT_PASSWORD
+      url: jdbc:mysql://${IP}:33306/know_seek?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: ${MYSQL_USERNAME}
+      password: ${MYSQL_PASSWORD}
       driver-class-name: com.mysql.cj.jdbc.Driver
       type: com.zaxxer.hikari.HikariDataSource
       hikari:
@@ -21,9 +21,9 @@ spring:
         pool-name: mysqlHikariCP
     pgvector:
       driver-class-name: org.postgresql.Driver
-      username: springleaf
-      password: Yjw123456#
-      url: jdbc:postgresql://120.26.236.122:15432/know_seek
+      username: ${PGVECTOR_USERNAME}
+      password: ${PGVECTOR_PASSWORD}
+      url: jdbc:postgresql://${IP}:15432/know_seek
       type: com.zaxxer.hikari.HikariDataSource
       hikari:
         maximum-pool-size: 5
@@ -34,10 +34,10 @@ spring:
         pool-name: pgvectorHikariCP
   data:
     redis:
-      host: 120.26.236.122
+      host: ${IP}
       port: 56379
-      username: default
-      password: Yjw123456#
+      username: ${REDIS_USERNAME}
+      password: ${REDIS_PASSWORD}
       lettuce:
         pool:
           enabled: true
@@ -50,10 +50,10 @@ spring:
           test-on-borrow: false                 # 借出时不检测（性能考虑）
           test-on-create: false
   rabbitmq:
-    host: 120.26.236.122
+    host: ${IP}
     port: 5672
-    username: admin
-    password: admin
+    username: ${RABBITMQ_USERNAME}
+    password: ${PABBITMQ_PASSWORD}
     listener:
       simple:
         prefetch: 1 # 每次投递n个消息，消费完在投递n个
@@ -70,7 +70,7 @@ spring:
     # 使用 spring.ai.openai 的配置路径，因为灵码提供了 OpenAI 兼容接口
     openai:
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      api-key: sk-0393395839294d9491512a924a61d6b9
+      api-key: ${API_KEY}
 
       # 聊天模型的相关配置
       chat:
@@ -117,6 +117,6 @@ sa-token:
 aliyun:
   oss:
     endpoint: https://oss-cn-hangzhou.aliyuncs.com
-    bucket-name: know-seek-bucket
+    bucket-name: ${BUCKET_NAME}
     # 分片预签名URL过期时间（单位：秒）
     presigned-url-expiration: 900
