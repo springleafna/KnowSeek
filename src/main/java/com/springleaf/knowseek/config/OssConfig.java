@@ -14,6 +14,8 @@ public class OssConfig {
 
     private String endpoint;
     private String bucketName;
+    private String accessKeyId;
+    private String accessKeySecret;
     /**
      * 预签名URL过期时间：15分钟
      */
@@ -21,10 +23,6 @@ public class OssConfig {
 
     @Bean
     public OSS ossClient() {
-        // 直接从环境变量获取敏感信息
-        String accessKeyId = System.getenv("OSS_ACCESS_KEY_ID");
-        String accessKeySecret = System.getenv("OSS_ACCESS_KEY_SECRET");
-
         if (accessKeyId == null || accessKeySecret == null) {
             throw new IllegalStateException("OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET must be set as environment variables");
         }

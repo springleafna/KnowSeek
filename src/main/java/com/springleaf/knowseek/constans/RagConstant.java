@@ -10,10 +10,10 @@ public final class RagConstant {
     /**
      * 召回后最多保留的文件数
      */
-    public static final int MAX_FILES = 2;
+    public static final int MAX_FILES = 3;
 
     /**
      * 每个文件最多保留的分片数
      */
-    public static final int CHUNKS_PER_FILE = 2;
+    public static final int CHUNKS_PER_FILE = 3;
 }

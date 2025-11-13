@@ -120,3 +120,5 @@ aliyun:
     bucket-name: ${BUCKET_NAME}
     # 分片预签名URL过期时间（单位：秒）
     presigned-url-expiration: 900
+    access-key-id: ${ACCESS_KEY_ID}
+    access-key-secret: ${ACCESS_KEY_SECRET}
