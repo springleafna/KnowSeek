@@ -3,15 +3,14 @@ package com.springleaf.knowseek.controller;
 import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.*;
-import com.springleaf.knowseek.model.vo.FileItemVO;
-import com.springleaf.knowseek.model.vo.UploadCompleteVO;
-import com.springleaf.knowseek.model.vo.UploadInitVO;
-import com.springleaf.knowseek.model.vo.UploadProgressVO;
+import com.springleaf.knowseek.model.vo.*;
 import com.springleaf.knowseek.service.FileService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/file")
@@ -27,6 +26,15 @@ public class FileController {
     public Result<PageInfo<FileItemVO>> getFileList(FilePageDTO filePageDTO) {
         PageInfo<FileItemVO> pageInfo = fileService.getFileList(filePageDTO);
         return Result.success(pageInfo);
+    }
+
+    /**
+     * 获取文件的所有分片文本内容
+     */
+    @GetMapping("/getFileDetail")
+    public Result<List<FileChunkDetailVO>> getFileDetail(@NotNull(message = "文件ID不能为空") @RequestParam("fileId") Long fileId) {
+        List<FileChunkDetailVO> fileChunkDetailList = fileService.getFileDetail(fileId);
+        return Result.success(fileChunkDetailList);
     }
 
     /**

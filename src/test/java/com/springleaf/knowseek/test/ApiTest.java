@@ -52,6 +52,14 @@ public class ApiTest {
     }
 
     @Test
+    void testFindAllChunk() {
+        List<VectorRecord> allChunk = vectorRecordMapper.findAllChunk(2L, 66L);
+        for (VectorRecord vectorRecord : allChunk) {
+            System.out.println(vectorRecord.getChunkText());
+        }
+    }
+
+    @Test
     void testDownloadFile() {
         String s = fileService.downloadFile(66L);
         System.out.println("filePath:" + s);

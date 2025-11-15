@@ -25,4 +25,9 @@ public interface VectorRecordMapper {
      * 根据文件 ID 删除向量数据
      */
     void deleteByFileId(@Param("id") Long id);
+
+    /**
+     * 根据用户ID、知识库ID和文件ID 获取某个文件的所有分片文本内容
+     */
+    List<VectorRecord> findAllChunk(@Param("userId")Long userId, @Param("fileId")Long fileId);
 }

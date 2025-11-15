@@ -19,10 +19,8 @@ import com.springleaf.knowseek.model.bo.VectorBO;
 import com.springleaf.knowseek.model.domain.FileWithKbNameDO;
 import com.springleaf.knowseek.model.dto.*;
 import com.springleaf.knowseek.model.entity.FileUpload;
-import com.springleaf.knowseek.model.vo.FileItemVO;
-import com.springleaf.knowseek.model.vo.UploadCompleteVO;
-import com.springleaf.knowseek.model.vo.UploadInitVO;
-import com.springleaf.knowseek.model.vo.UploadProgressVO;
+import com.springleaf.knowseek.model.entity.VectorRecord;
+import com.springleaf.knowseek.model.vo.*;
 import com.springleaf.knowseek.mq.event.FileVectorizeEvent;
 import com.springleaf.knowseek.mq.producer.EventPublisher;
 import com.springleaf.knowseek.service.FileService;
@@ -708,6 +706,23 @@ public class FileServiceImpl implements FileService {
             log.error("OSS 客户端错误: {}", ce.getMessage(), ce);
             throw new BusinessException("网络异常，无法生成下载链接。" + ce);
         }
+    }
+
+    @Override
+    public List<FileChunkDetailVO> getFileDetail(Long fileId) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        List<VectorRecord> allChunk = vectorRecordMapper.findAllChunk(userId, fileId);
+        if (allChunk == null || allChunk.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<FileChunkDetailVO> fileChunkDetailList = new ArrayList<>();
+        allChunk.forEach(chunk -> {
+            FileChunkDetailVO fileChunkDetailVO = new FileChunkDetailVO();
+            fileChunkDetailVO.setChunkIndex(chunk.getChunkIndex());
+            fileChunkDetailVO.setChunkText(chunk.getChunkText());
+            fileChunkDetailList.add(fileChunkDetailVO);
+        });
+        return fileChunkDetailList;
     }
 
     /**

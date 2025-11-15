@@ -36,5 +36,5 @@ public class VectorRecord {
 
     private LocalDateTime updatedAt;
 
-    private Integer deleted;
+    private Boolean deleted;
 }

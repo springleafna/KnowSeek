@@ -2,10 +2,9 @@ package com.springleaf.knowseek.service;
 
 import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.model.dto.*;
-import com.springleaf.knowseek.model.vo.FileItemVO;
-import com.springleaf.knowseek.model.vo.UploadCompleteVO;
-import com.springleaf.knowseek.model.vo.UploadInitVO;
-import com.springleaf.knowseek.model.vo.UploadProgressVO;
+import com.springleaf.knowseek.model.vo.*;
+
+import java.util.List;
 
 public interface FileService {
 
@@ -58,4 +57,9 @@ public interface FileService {
      * 文件下载
      */
     String downloadFile(Long id);
+
+    /**
+     * 获取文件分片列表详情
+     */
+    List<FileChunkDetailVO> getFileDetail(Long fileId);
 }

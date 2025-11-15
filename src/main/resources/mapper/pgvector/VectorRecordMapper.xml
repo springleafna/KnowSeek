@@ -92,6 +92,14 @@
         ]]>
     </select>
 
+    <select id="findAllChunk" resultMap="BaseResultMap">
+        SELECT * FROM tb_vector_record
+        WHERE user_id = #{userId}
+          AND file_id = #{fileId}
+          AND deleted = false
+        ORDER BY chunk_index ASC
+    </select>
+
     <delete id="deleteByFileId" parameterType="java.lang.Long">
         delete from tb_vector_record
         WHERE file_id = #{id}
