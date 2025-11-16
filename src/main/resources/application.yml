@@ -68,7 +68,7 @@ spring:
       file-processing-vectorize: file.processing.vectorize
   ai:
     dashscope:
-      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      # base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
       api-key: ${API_KEY}
       # 聊天模型的相关配置
       chat:
@@ -81,7 +81,7 @@ spring:
       # 嵌入模型的相关配置
       embedding:
         options:
-          model: text-embedding-v2
+          model: text-embedding-v4
           dimensions: 1024
 
 mybatis:
