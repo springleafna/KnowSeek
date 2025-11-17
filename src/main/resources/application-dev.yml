@@ -1,0 +1,16 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  rabbitmq:
+    topic:
+      file-processing-vectorize: file.processing.vectorize-local
+    custom:
+      vectorize:
+        queue: file.processing.vectorize-local
+        exchange: file.processing.exchange-local
+        routing-key: file.processing.vectorize-local
+      dead-letter:
+        exchange: file.processing.dlx-local
+        queue: file.processing.vectorize.failed-local
+        routing-key: file.processing.vectorize.failed-local

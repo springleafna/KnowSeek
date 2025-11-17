@@ -15,8 +15,6 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.tika.Tika;
-import org.springframework.amqp.rabbit.annotation.Argument;
-import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,14 +70,7 @@ public class FileVectorizeConsumer {
             "txt", "md", "xml", "html", "htm", "json", "csv"
     ));
 
-    @RabbitListener(queuesToDeclare = @Queue(
-            value = "file.processing.vectorize",
-            durable = "true",
-            arguments = {
-                    @Argument(name = "x-dead-letter-exchange", value = "file.processing.dlx"),
-                    @Argument(name = "x-dead-letter-routing-key", value = "file.processing.vectorize.failed")
-            }
-    ))
+    @RabbitListener(queues = "${spring.rabbitmq.custom.vectorize.queue}")
     public void listener(String message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
                          @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) throws Exception {
         long startTime = System.currentTimeMillis();
