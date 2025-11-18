@@ -556,11 +556,19 @@ public class FileServiceImpl implements FileService {
             Long id = Long.valueOf(idStr);
             String fileName = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileName");
             String fileKey = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "fileKey");
-            Integer chunkTotal = (Integer) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
+            String chunkTotalStr = (String) stringRedisTemplate.opsForHash().get(fileUploadInfoKey, "chunkTotal");
 
-            if (fileKey == null || chunkTotal == null) {
+            if (fileKey == null || chunkTotalStr == null) {
                 log.warn("文件上传信息不完整或已过期，uploadId: {}", uploadId);
                 throw new BusinessException("上传任务信息不完整或已过期");
+            }
+
+            int chunkTotal;
+            try {
+                chunkTotal = Integer.parseInt(chunkTotalStr);
+            } catch (NumberFormatException e) {
+                log.error("Redis 中 chunkTotal 字段格式非法: '{}', uploadId: {}", chunkTotalStr, uploadId);
+                throw new BusinessException("上传任务数据损坏：分片总数格式错误");
             }
 
             // 检查当前文件状态是否允许恢复
@@ -641,7 +649,9 @@ public class FileServiceImpl implements FileService {
         // 1. 删除 OSS 文件
         try {
             if (file.getLocation() == null) {
-                throw new BusinessException("文件地址不存在");
+                fileUploadMapper.deleteByFileId(id);
+                log.info("文件地址不存在，删除数据库记录");
+                return;
             }
             ossClient.deleteObject(ossConfig.getBucketName(), getFileKeyFromLocation(file.getLocation()));
         } catch (Exception e) {

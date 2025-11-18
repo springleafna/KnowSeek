@@ -59,7 +59,8 @@ public class FileController {
      * 获取上传进度
      */
     @GetMapping("/progress")
-    public Result<UploadProgressVO> getUploadProgress(String uploadId, String fileKey) {
+    public Result<UploadProgressVO> getUploadProgress(@NotNull(message = "uploadId不能为空") @RequestParam String uploadId,
+                                                      @NotNull(message = "fileKey不能为空") @RequestParam String fileKey) {
         return Result.success(fileService.getUploadProgress(uploadId, fileKey));
     }
 
