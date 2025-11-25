@@ -70,11 +70,23 @@ public class FileVectorizeConsumer {
             "txt", "md", "xml", "html", "htm", "json", "csv"
     ));
 
+    // 定义分片分隔符优先级
+    // 1. 双换行（段落）
+    // 2. 单换行
+    // 3. 句子结束符（支持中英文常见标点）
+    private static final List<String> SEPARATORS = Arrays.asList(
+            "\n\n",
+            "\n",
+            "。|！|？|\\.|\\!|\\?", // 正则表达式
+            " "
+    );
+
     @RabbitListener(queues = "${spring.rabbitmq.custom.vectorize.queue}")
     public void listener(String message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
                          @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) throws Exception {
         long startTime = System.currentTimeMillis();
-        Long fileId = null; // 提前声明 fileId，用于失败时更新状态
+        // 提前声明 fileId，用于失败时更新状态
+        Long fileId = null;
 
         try {
             log.info("[消费者] 文件向量化任务正式执行 - 执行消费逻辑，topic: {}, message: {}", topic, message);
@@ -133,7 +145,6 @@ public class FileVectorizeConsumer {
             fileUploadMapper.updateUploadStatus(fileId, status.getStatus());
         } catch (Exception dbEx) {
             log.error("更新文件状态失败，fileId: {}, status: {}", fileId, status, dbEx);
-            // 可选：是否要抛出？一般建议记录即可，避免影响消息处理流程
         }
     }
 
@@ -327,8 +338,7 @@ public class FileVectorizeConsumer {
      * @param chunkQueue 文本块队列
      */
     private void chunkExtractedText(String text, BlockingQueue<String> chunkQueue) {
-        // 调用核心分块方法，因为text是完整内容，所以 isFinalChunk 为 true
-        List<String> chunks = chunkContent(text, true);
+        List<String> chunks = splitTextRecursively(text);
 
         // 将生成的所有块放入队列
         for (String chunk : chunks) {
@@ -340,6 +350,7 @@ public class FileVectorizeConsumer {
 
     /**
      * 专门处理纯文本的“真·流式”方法，内存占用最低。
+     * 优化：增加残留缓冲区处理，避免在流的边界切断句子
      *
      * @param inputStream 文件输入流
      * @param chunkQueue  文本块队列
@@ -353,59 +364,186 @@ public class FileVectorizeConsumer {
             while ((line = reader.readLine()) != null) {
                 buffer.append(line).append("\n");
 
-                if (buffer.length() >= CHUNK_SIZE * 2) {
-                    totalChunks += extractChunksFromBuffer(buffer, chunkQueue, false);
+                // 当缓冲区积累到一定大小时进行处理
+                // 这里的 buffer 大小建议比 CHUNK_SIZE 大一些，以便找到合适的切分点
+                if (buffer.length() >= CHUNK_SIZE * 3) {
+                    totalChunks += extractChunksFromBufferSmart(buffer, chunkQueue, false);
                 }
             }
 
+            // 处理剩余的所有内容
             if (!buffer.isEmpty()) {
-                totalChunks += extractChunksFromBuffer(buffer, chunkQueue, true);
+                totalChunks += extractChunksFromBufferSmart(buffer, chunkQueue, true);
             }
             log.info("纯文本流式处理共生成 {} 个文本块", totalChunks);
         }
     }
 
     /**
-     * 核心分块方法：将给定内容按智能断句逻辑切分成文本块列表。
-     *
-     * @param content      要进行分块的文本内容
-     * @param isFinalChunk 布尔值，表示这是否是最后一部分内容。如果是，则会处理到末尾；如果不是，会为重叠保留内容。
-     * @return 一个包含所有文本块的列表
+     * 智能从缓冲区提取文本块
+     * 逻辑：找到缓冲区中最后一个安全的换行点，只处理那之前的数据，剩余数据保留在 StringBuilder 中
      */
-    private List<String> chunkContent(String content, boolean isFinalChunk) {
-        List<String> chunks = new ArrayList<>();
-        int start = 0;
+    private int extractChunksFromBufferSmart(StringBuilder buffer, BlockingQueue<String> chunkQueue, boolean isLastBuffer) {
+        String content = buffer.toString();
 
-        while (start < content.length()) {
-            int end = Math.min(start + CHUNK_SIZE, content.length());
+        String textToProcess;
+        String remainingText = "";
 
-            // 智能断句逻辑：如果不是最后一块，且还有后续内容，则尝试寻找最佳断句点
-            if (!isFinalChunk && end < content.length()) {
-                int idealEnd = Math.min(end + 100, content.length());
-                int lastNewline = content.lastIndexOf('\n', idealEnd);
-                int lastPeriod = content.lastIndexOf('。', idealEnd);
-                int lastExclamation = content.lastIndexOf('！', idealEnd);
-                int lastQuestion = content.lastIndexOf('？', idealEnd);
+        if (isLastBuffer) {
+            textToProcess = content;
+            buffer.setLength(0); // 清空
+        } else {
+            // 寻找最后一个换行符，保证我们处理的是完整的行
+            int lastNewline = content.lastIndexOf('\n');
+            if (lastNewline > -1) {
+                textToProcess = content.substring(0, lastNewline + 1);
+                remainingText = content.substring(lastNewline + 1);
+            } else {
+                // 极端情况：缓冲区全是没换行的一句话，只能硬处理
+                textToProcess = content;
+            }
+        }
 
-                int bestBreak = Math.max(Math.max(lastNewline, lastPeriod),
-                        Math.max(lastExclamation, lastQuestion));
+        // 调用核心分块方法
+        List<String> chunks = splitTextRecursively(textToProcess);
 
-                // 确保断句点在合理范围内，避免切出太小的块
-                if (bestBreak > start + CHUNK_SIZE - CHUNK_OVERLAP) {
-                    end = bestBreak + 1;
+        for (String chunk : chunks) {
+            chunkQueue.offer(chunk);
+        }
+
+        // 重置缓冲区并填入残留文本
+        if (!isLastBuffer) {
+            buffer.setLength(0);
+            buffer.append(remainingText);
+
+            // 上下文连贯性优化：
+            // 如果使用了流式分块，最后生成的 chunks 可能没有与 remainingText 形成重叠。
+            // 在这里我们手动保留最后一个 chunk 的一部分作为"前文"，加到 buffer 最前面。
+            // 这样下一次处理 buffer 时，开头就是上一次的结尾，实现了跨 buffer 的重叠。
+            if (!chunks.isEmpty()) {
+                String lastChunk = chunks.get(chunks.size() - 1);
+                int keepLen = Math.min(lastChunk.length(), CHUNK_OVERLAP);
+                // 插入到 buffer 头部
+                buffer.insert(0, lastChunk.substring(lastChunk.length() - keepLen));
+            }
+        }
+
+        return chunks.size();
+    }
+
+    /**
+     * 核心分片方法：递归语义分片
+     * 替代原有的 chunkContent 方法
+     */
+    private List<String> splitTextRecursively(String text) {
+        return splitTextInternal(text, SEPARATORS);
+    }
+
+    /**
+     * 内部递归方法
+     */
+    private List<String> splitTextInternal(String text, List<String> separators) {
+        String separator = separators.get(0); // 当前使用的分隔符
+        List<String> nextSeparators = separators.subList(1, separators.size()); // 剩余的分隔符
+
+        // 1. 按照当前分隔符分割文本
+        List<String> splits = new ArrayList<>();
+
+        // 处理正则表达式特殊字符
+        boolean isRegex = separator.contains("|") || separator.contains("\\");
+
+        if (isRegex) {
+            // 如果是正则（句子分隔符），我们需要保留分隔符本身（比如句号）
+            // 使用 lookbehind 技巧或者手动分割来保留标点
+            // 简单起见，这里使用 split 但可能会丢失标点，为了严谨建议使用 Matcher
+            // 这里为了性能和代码简洁，使用简单的正则分割，若需保留标点可优化
+            String[] rawSplits = text.split("(?<=" + separator + ")");
+            Collections.addAll(splits, rawSplits);
+        } else {
+            String[] rawSplits = text.split(separator);
+            for (String s : rawSplits) {
+                if(!s.trim().isEmpty()) {
+                    splits.add(s + (separator.equals("\n\n") || separator.equals("\n") ? separator : ""));
+                }
+            }
+        }
+
+        // 2. 合并碎片，形成最终的 Chunks
+        List<String> goodSplits = new ArrayList<>();
+
+        for (String s : splits) {
+            if (s.length() < CHUNK_SIZE) {
+                goodSplits.add(s);
+            } else {
+                // 如果当前碎片依然过大，且还有更细粒度的分隔符，则递归处理
+                if (!nextSeparators.isEmpty()) {
+                    goodSplits.addAll(splitTextInternal(s, nextSeparators));
+                } else {
+                    // 如果没有分隔符了，只能硬切（原样保留或按字符切）
+                    goodSplits.add(s);
+                }
+            }
+        }
+
+        // 3. 组装 Chunks (Sliding Window with Overlap)
+        return mergeSplits(goodSplits, separator);
+    }
+
+    /**
+     * 合并切分好的小片段，使其长度接近 CHUNK_SIZE，并保持重叠
+     */
+    private List<String> mergeSplits(List<String> splits, String separator) {
+        List<String> docs = new ArrayList<>();
+        StringBuilder currentDoc = new StringBuilder();
+
+        // 用于构建重叠部分的队列
+        Deque<String> overlapWindow = new LinkedList<>();
+        int currentOverlapSize = 0;
+
+        for (String split : splits) {
+            // 如果加入当前片段后超过了块大小
+            if (currentDoc.length() + split.length() > CHUNK_SIZE) {
+                if (!currentDoc.isEmpty()) {
+                    String doc = currentDoc.toString().trim();
+                    if (!doc.isEmpty()) {
+                        docs.add(doc);
+                    }
+
+                    // 这里的核心优化：重叠的内容是基于之前的“完整语义片段”构建的，而不是硬切字符
+                    currentDoc.setLength(0);
+
+                    // 从 overlapWindow 中恢复内容作为新 chunk 的开头
+                    // 这里的 overlapWindow 存的是完整的句子或段落
+                    for (String s : overlapWindow) {
+                        currentDoc.append(s);
+                    }
                 }
             }
 
-            String chunk = content.substring(start, end).trim();
-            if (!chunk.isEmpty()) {
-                chunks.add(chunk);
-            }
+            currentDoc.append(split);
 
-            // 计算下一个分块的起始位置
-            start = Math.max(start + CHUNK_SIZE - CHUNK_OVERLAP, end);
+            // --- 维护重叠窗口 ---
+            overlapWindow.addLast(split);
+            currentOverlapSize += split.length();
+
+            // 如果窗口过大（超过了设定的重叠大小），移除最早的片段
+            // 这样保证 overlapWindow 里始终保留着最近的约 CHUNK_OVERLAP 长度的完整语义片段
+            while (currentOverlapSize > CHUNK_OVERLAP && overlapWindow.size() > 1) {
+                // 保留至少一个，防止死循环
+                String removed = overlapWindow.removeFirst();
+                currentOverlapSize -= removed.length();
+            }
         }
 
-        return chunks;
+        // 处理最后一个块
+        if (!currentDoc.isEmpty()) {
+            String doc = currentDoc.toString().trim();
+            if (!doc.isEmpty()) {
+                docs.add(doc);
+            }
+        }
+
+        return docs;
     }
 
     /**
@@ -415,7 +553,7 @@ public class FileVectorizeConsumer {
         String content = buffer.toString();
 
         // 调用核心分块方法
-        List<String> chunks = chunkContent(content, isLastBuffer);
+        List<String> chunks = splitTextRecursively(content);
 
         // 将生成的所有块放入队列
         for (String chunk : chunks) {
