@@ -14,6 +14,7 @@ import com.springleaf.knowseek.mapper.mysql.UserOrganizationMapper;
 import com.springleaf.knowseek.model.dto.UserLoginDTO;
 import com.springleaf.knowseek.model.dto.UserPageDTO;
 import com.springleaf.knowseek.model.dto.UserRegisterDTO;
+import com.springleaf.knowseek.model.dto.UserUpdatePasswordDTO;
 import com.springleaf.knowseek.model.entity.KnowledgeBase;
 import com.springleaf.knowseek.model.entity.Organization;
 import com.springleaf.knowseek.model.entity.User;
@@ -67,8 +68,8 @@ public class UserServiceImpl implements UserService {
         return new UserLoginVO(token);
     }
 
-    @Transactional
     @Override
+    @Transactional
     public void register(UserRegisterDTO registerDTO) {
         log.info("新用户注册");
         String username = registerDTO.getUsername();
@@ -204,5 +205,41 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("用户不存在");
         }
         userMapper.deleteById(id);
+    }
+
+    @Override
+    public void updatePassword(UserUpdatePasswordDTO updatePasswordDTO) {
+        long userId = StpUtil.getLoginIdAsLong();
+        String oldPassword = updatePasswordDTO.getOldPassword();
+        String newPassword = updatePasswordDTO.getNewPassword();
+        String confirmPassword = updatePasswordDTO.getConfirmPassword();
+
+        if (!newPassword.equals(confirmPassword)) {
+            throw new BusinessException("两次输入的密码不一致");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            throw new BusinessException("新旧密码不能相同");
+        }
+
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        if (!PasswordUtil.verifyPassword(oldPassword, user.getPassword())) {
+            throw new BusinessException("旧密码输入错误");
+        }
+
+        String encryptedNewPassword = PasswordUtil.encryptPassword(newPassword);
+        userMapper.resetPassword(userId, encryptedNewPassword);
+
+        // 使当前token失效
+        StpUtil.logout();
+
+        // 使该用户的所有登录会话都失效（踢人下线）
+        StpUtil.kickout(userId);
+
+        log.info("用户 {} 修改密码成功，所有会话已失效", userId);
     }
 }

@@ -6,6 +6,7 @@ import com.springleaf.knowseek.common.Result;
 import com.springleaf.knowseek.model.dto.UserLoginDTO;
 import com.springleaf.knowseek.model.dto.UserPageDTO;
 import com.springleaf.knowseek.model.dto.UserRegisterDTO;
+import com.springleaf.knowseek.model.dto.UserUpdatePasswordDTO;
 import com.springleaf.knowseek.model.vo.UserInfoVO;
 import com.springleaf.knowseek.model.vo.UserListVO;
 import com.springleaf.knowseek.model.vo.UserLoginVO;
@@ -37,6 +38,15 @@ public class UserController {
     @PostMapping("/register")
     public Result<Void> register(@RequestBody @Valid UserRegisterDTO registerDTO) {
         userService.register(registerDTO);
+        return Result.success();
+    }
+
+    /**
+     * 用户修改密码
+     */
+    @PutMapping("/updatePassword")
+    public Result<Void> updatePassword(@RequestBody @Valid UserUpdatePasswordDTO updatePasswordDTO) {
+        userService.updatePassword(updatePasswordDTO);
         return Result.success();
     }
 

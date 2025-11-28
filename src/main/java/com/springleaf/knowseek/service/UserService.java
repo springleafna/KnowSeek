@@ -4,9 +4,11 @@ import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.model.dto.UserLoginDTO;
 import com.springleaf.knowseek.model.dto.UserPageDTO;
 import com.springleaf.knowseek.model.dto.UserRegisterDTO;
+import com.springleaf.knowseek.model.dto.UserUpdatePasswordDTO;
 import com.springleaf.knowseek.model.vo.UserInfoVO;
 import com.springleaf.knowseek.model.vo.UserListVO;
 import com.springleaf.knowseek.model.vo.UserLoginVO;
+import jakarta.validation.Valid;
 
 public interface UserService {
 
@@ -49,4 +51,9 @@ public interface UserService {
      * Admin：删除用户
      */
     void deleteUser(Long id);
+
+    /**
+     * 用户修改密码
+     */
+    void updatePassword(UserUpdatePasswordDTO updatePasswordDTO);
 }
