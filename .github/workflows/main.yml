@@ -31,6 +31,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASS }}
+          port: ${{ secrets.SERVER_PORT }}
           source: "docker-compose.yml,Dockerfile,target/*.jar"
           target: /data/myApp/
           overwrite: true
@@ -42,6 +43,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASS }}
+          port: ${{ secrets.SERVER_PORT }}
           script: |
             cd /data/myApp/
             
