@@ -2,7 +2,9 @@ server:
   port: 8181 # 指定端口号
 spring:
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  config:
+    import: optional:file:.env[.properties]
   jackson:
     time-zone: GMT+8
   datasource:

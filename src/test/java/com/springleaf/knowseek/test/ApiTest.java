@@ -13,9 +13,7 @@ import com.springleaf.knowseek.mapper.pgvector.VectorRecordMapper;
 import com.springleaf.knowseek.model.entity.FileUpload;
 import com.springleaf.knowseek.model.entity.VectorRecord;
 import com.springleaf.knowseek.service.FileService;
-import io.github.cdimascio.dotenv.Dotenv;
 import jakarta.annotation.Resource;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,16 +38,6 @@ public class ApiTest {
     private FileUploadMapper fileUploadMapper;
     @Resource
     private FileService fileService;
-
-    @BeforeAll
-    static void setup() {
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-
-        // 自动将所有 .env 变量注入到系统属性
-        dotenv.entries().forEach(entry -> {
-            System.setProperty(entry.getKey(), entry.getValue());
-        });
-    }
 
     @Test
     void testFindAllChunk() {

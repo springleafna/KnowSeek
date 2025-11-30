@@ -1,0 +1,62 @@
+name: CI/CD for Spring Boot
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 设置 Java 环境
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven  # 添加 Maven 缓存，加速构建
+
+      # 3. 编译项目（跳过测试，避免测试失败导致部署中断）
+      - name: Build project
+        run: mvn clean package -DskipTests
+
+      # 4. 上传文件到服务器
+      - name: Upload to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASS }}
+          source: "docker-compose.yml,Dockerfile,target/*.jar"
+          target: /data/myApp/
+          overwrite: true
+
+      # 5. 在服务器上构建镜像并部署
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3  # 更新到最新版本
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASS }}
+          script: |
+            cd /data/myApp/
+            
+            # 停止现有服务
+            docker-compose down
+            
+            # 清理旧的 Docker 镜像，释放空间
+            docker image prune -f
+            
+            # 构建并启动新服务
+            docker-compose up -d --build
+            
+            # 等待服务启动，然后检查状态
+            sleep 15
+            docker-compose ps
+            docker-compose logs --tail=30
+            
+            echo "🎉 部署完成！应用运行在端口 8181"

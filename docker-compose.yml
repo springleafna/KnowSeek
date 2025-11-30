@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  knowseek-app:
+    build: .
+    container_name: knowseek-springboot
+    ports:
+      - "8181:8181"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
