@@ -1,5 +1,8 @@
 package com.springleaf.knowseek.constans;
 
+/**
+ * Rag检索相关常量
+ */
 public final class RagConstant {
 
     /**

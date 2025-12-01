@@ -58,8 +58,7 @@ public class FileVectorizeConsumer {
     @Resource
     private FileUploadMapper fileUploadMapper;
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
-    private static final int BUFFER_SIZE = 8192; // 8KB 缓冲区
+    private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();    private static final int BUFFER_SIZE = 8192; // 8KB 缓冲区
     private static final int CHUNK_SIZE = 1000; // 文本块大小
     private static final int CHUNK_OVERLAP = 100; // 重叠大小
     private static final int BATCH_PROCESS_SIZE = 10; // 批量处理文本块数量
@@ -117,7 +116,7 @@ public class FileVectorizeConsumer {
             log.info("文档流式处理完成，耗时: {} ms", processingTime);
 
             // 更新文件上传状态为“处理完成”
-            fileUploadMapper.updateUploadStatus(fileId, UploadStatusEnum.PROCESSING_COMPLETED.getStatus());
+            safeUpdateStatus(fileId, UploadStatusEnum.PROCESSING_COMPLETED);
 
         } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - startTime;
@@ -234,11 +233,6 @@ public class FileVectorizeConsumer {
                 }
 
                 log.info("文件解析和分块完成: {}", fileUrl);
-
-                // 延迟发送 EOF，确保向量化线程有时间消费所有 chunk
-                // 等待 1 秒，让队列中的 chunk 被消费
-                Thread.sleep(1000);
-
             } finally {
                 connection.disconnect();
                 // 确保在所有处理完成后发送结束信号
@@ -433,7 +427,6 @@ public class FileVectorizeConsumer {
 
     /**
      * 核心分片方法：递归语义分片
-     * 替代原有的 chunkContent 方法
      */
     private List<String> splitTextRecursively(String text) {
         return splitTextInternal(text, SEPARATORS);
@@ -560,7 +553,7 @@ public class FileVectorizeConsumer {
             chunkQueue.offer(chunk);
         }
 
-        // 更新缓冲区，保留重叠部分 (这部分逻辑保持不变，因为它特定于流式处理)
+        // 更新缓冲区，保留重叠部分
         if (!isLastBuffer && content.length() > CHUNK_OVERLAP) {
             buffer.setLength(0);
             buffer.append(content.substring(content.length() - CHUNK_OVERLAP));
@@ -750,6 +743,6 @@ public class FileVectorizeConsumer {
     /**
      * 文本块和向量的包装类
      */
-    private record ChunkWithVector(String chunk, float[] vector) {
+    public record ChunkWithVector(String chunk, float[] vector) {
     }
 }

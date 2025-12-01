@@ -63,7 +63,6 @@ public class FileServiceImpl implements FileService {
 
         String sortOrder = "asc".equalsIgnoreCase(filePageDTO.getSortOrder()) ? "asc" : "desc";
 
-        // 执行查询（模糊搜索条件已在XML中处理）
         List<FileWithKbNameDO> fileDOs = fileUploadMapper.selectPageWithKbName(
                 userId,
                 filePageDTO.getFileName(),
@@ -758,15 +757,6 @@ public class FileServiceImpl implements FileService {
      *  从阿里云OSS获取分片ETag列表
      */
     private List<PartETag> getPartETagList(String uploadId, String fileKey) {
-        if (uploadId == null || uploadId.trim().isEmpty()) {
-            log.warn("getPartETagList 调用失败：uploadId 不能为空");
-            throw new IllegalArgumentException("uploadId 不能为空");
-        }
-        if (fileKey == null || fileKey.trim().isEmpty()) {
-            log.warn("getPartETagList 调用失败：fileKey 不能为空");
-            throw new IllegalArgumentException("fileKey 不能为空");
-        }
-
         try {
             // 调用阿里云 OSS 的 ListParts 接口
             ListPartsRequest listPartsRequest = new ListPartsRequest(

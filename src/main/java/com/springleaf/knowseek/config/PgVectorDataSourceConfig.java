@@ -17,6 +17,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
+/**
+ * PostgreSQL vector 数据源配置
+ */
 @Configuration
 @MapperScan(
         basePackages = "com.springleaf.knowseek.mapper.pgvector",

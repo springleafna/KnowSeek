@@ -42,6 +42,7 @@ spring:
       port: 56379
       username: ${REDIS_USERNAME}
       password: ${REDIS_PASSWORD}
+      database: 1
       lettuce:
         pool:
           enabled: true
@@ -60,6 +61,10 @@ spring:
     password: ${PABBITMQ_PASSWORD}
     listener:
       simple:
+        # 同时开启5个消费者线程监听队列
+        concurrency: 5
+        # 最大扩容到 10 个消费者（当队列积压严重时自动扩容）
+        max-concurrency: 10
         prefetch: 1 # 每次投递n个消息，消费完在投递n个
         retry:
           enabled: true

@@ -17,6 +17,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
+/**
+ * Mysql 数据源配置
+ */
 @Configuration
 @MapperScan(
         basePackages = "com.springleaf.knowseek.mapper.mysql",

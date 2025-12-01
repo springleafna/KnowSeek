@@ -3,7 +3,7 @@
 <div align="center">
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.2-brightgreen)](https://spring.io/projects/spring-boot)
-[![Java](https://img.shields.io/badge/Java-17-orange)](https://www.oracle.com/java/)
+[![Java](https://img.shields.io/badge/Java-21-orange)](https://www.oracle.com/java/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-success)](https://github.com/features/actions)
@@ -66,7 +66,7 @@ KnowSeek 是一个企业级的 AI 知识库管理与智能问答系统，基于�
 
 ### 后端框架
 - **Spring Boot 3.4.2**：最新稳定版核心框架
-- **Java 17**：LTS 长期支持版本
+- **Java 21**：LTS 长期支持版本
 - **Maven 3.6+**：项目构建和依赖管理
 
 ### 数据存储
@@ -234,14 +234,14 @@ KnowSeek/
 
 ### 环境要求
 
-| 组件 | 最低版本 | 推荐版本 | 说明 |
-|------|----------|----------|------|
-| JDK | 17 | 17+ | LTS 版本 |
-| Maven | 3.6 | 3.8+ | 依赖管理 |
-| MySQL | 8.0 | 8.0+ | 主数据库 |
-| PostgreSQL | 12 | 14+ | 需要 pgvector 扩展 |
-| Redis | 6.0 | 7.0+ | 缓存服务 |
-| RabbitMQ | 3.8 | 3.12+ | 消息队列 |
+| 组件 | 最低版本  | 推荐版本  | 说明 |
+|------|-------|-------|------|
+| JDK | 21    | 21+   | LTS 版本 |
+| Maven | 3.6   | 3.8+  | 依赖管理 |
+| MySQL | 8.0   | 8.0+  | 主数据库 |
+| PostgreSQL | 12    | 14+   | 需要 pgvector 扩展 |
+| Redis | 6.0   | 7.0+  | 缓存服务 |
+| RabbitMQ | 3.8   | 3.12+ | 消息队列 |
 | Docker | 20.10 | 24.0+ | 可选，用于容器化部署 |
 
 ### 🚀 一键部署（Docker）
@@ -739,7 +739,7 @@ graph TB
 
 **Dockerfile**：
 ```dockerfile
-FROM openjdk:17-jdk-slim
+FROM openjdk:21-jdk-slim
 WORKDIR /app
 COPY target/KnowSeek-1.0-SNAPSHOT.jar app.jar
 EXPOSE 8181
@@ -770,7 +770,7 @@ services:
 
 **工作流程**：
 1. Checkout 代码
-2. 设置 Java 17 环境（含 Maven 缓存）
+2. 设置 Java 21 环境（含 Maven 缓存）
 3. Maven 构建（`mvn clean package -DskipTests`）
 4. SCP 上传到服务器（JAR、Dockerfile、docker-compose.yml）
 5. SSH 远程执行部署脚本
