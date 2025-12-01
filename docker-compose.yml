@@ -6,6 +6,8 @@ services:
     container_name: knowseek-springboot
     ports:
       - "8181:8181"
+    env_file:
+      - .env
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - TZ=Asia/Shanghai

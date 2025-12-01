@@ -18,15 +18,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          # cache: maven  # 添加 Maven 缓存，加速构建
-
-      # 增加一个调试步骤，确认环境真的是 21
-      - name: Check Java Version
-        run: |
-          echo "Java Version:"
-          java -version
-          echo "Maven Version:"
-          mvn -version
+          cache: maven  # 添加 Maven 缓存，加速构建
 
       # 3. 编译项目（跳过测试，避免测试失败导致部署中断）
       - name: Build project
