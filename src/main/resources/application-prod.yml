@@ -14,3 +14,8 @@ spring:
         exchange: file.processing.dlx
         queue: file.processing.vectorize.failed
         routing-key: file.processing.vectorize.failed
+logging:
+  file:
+    name: /app/logs/app.log
+    max-size: 10MB
+    max-history: 30

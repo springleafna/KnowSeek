@@ -33,7 +33,7 @@ jobs:
           password: ${{ secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT }}
           source: "docker-compose.yml,Dockerfile,target/*.jar"
-          target: /data/myApp/
+          target: /data/project/knowseek/backend/
           overwrite: true
 
       # 5. 在服务器上构建镜像并部署
@@ -45,7 +45,7 @@ jobs:
           password: ${{ secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT }}
           script: |
-            cd /data/myApp/
+            cd /data/project/knowseek/backend/
             
             echo "开始构建新镜像..."
             
