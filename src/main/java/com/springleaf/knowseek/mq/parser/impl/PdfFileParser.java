@@ -21,6 +21,8 @@ import java.util.concurrent.BlockingQueue;
 @Slf4j
 @Component("pdf")
 public class PdfFileParser extends AbstractFileParserStrategy {
+
+    private String lastPageTail = "";
     
     @Override
     public void parse(InputStream inputStream, BlockingQueue<String> chunkQueue) {
@@ -81,11 +83,22 @@ public class PdfFileParser extends AbstractFileParserStrategy {
      * @param chunkQueue 文本块队列
      */
     private void chunkExtractedText(String text, BlockingQueue<String> chunkQueue) {
-        List<String> chunks = splitTextRecursively(text);
+        // 将上一页的尾部加到当前页开头
+        String combinedText = lastPageTail + text;
+        List<String> chunks = splitTextRecursively(combinedText);
+
+        // 更新 lastPageTail 为当前页末尾（用于下一页）
+        if (!chunks.isEmpty()) {
+            String lastChunk = chunks.get(chunks.size() - 1);
+            int tailLength = Math.min(lastChunk.length(), CHUNK_OVERLAP);
+            lastPageTail = lastChunk.substring(lastChunk.length() - tailLength);
+        } else {
+            lastPageTail = "";
+        }
 
         // 将生成的所有块放入队列
         for (String chunk : chunks) {
-            chunkQueue.offer(chunk);
+            putToQueue(chunkQueue, chunk);
         }
 
         log.info("从Tika提取的文本中生成了 {} 个文本块", chunks.size());

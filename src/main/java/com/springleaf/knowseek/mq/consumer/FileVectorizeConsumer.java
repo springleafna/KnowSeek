@@ -12,26 +12,15 @@ import com.springleaf.knowseek.service.EmbeddingService;
 import com.springleaf.knowseek.service.VectorRecordService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.tika.Tika;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -66,14 +55,9 @@ public class FileVectorizeConsumer {
     private static final int BATCH_PROCESS_SIZE = 10; // 批量处理文本块数量
     private static final int QUEUE_TIMEOUT_SECONDS = 600; // 队列等待超时设为 10 分钟（600 秒），防止大文件解析慢导致误判
 
-    // 定义纯文本类型，这些类型可以使用最高效的流式读取
-    private static final Set<String> PLAIN_TEXT_EXTENSIONS = new HashSet<>(Arrays.asList(
-            "txt", "md", "xml", "html", "htm", "json", "csv"
-    ));
-
     @RabbitListener(queues = "${spring.rabbitmq.custom.vectorize.queue}")
     public void listener(String message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
-                         @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) throws Exception {
+                         @Header(value = "x-death", required = false) List<Map<String, Object>> xDeath) {
         long startTime = System.currentTimeMillis();
         // 提前声明 fileId，用于失败时更新状态
         Long fileId = null;
@@ -141,7 +125,7 @@ public class FileVectorizeConsumer {
     /**
      * 流式处理文件向量化
      */
-    private void processFileStreaming(String fileUrl, String extension, VectorBO vectorBO) throws Exception {
+    private void processFileStreaming(String fileUrl, String extension, VectorBO vectorBO) {
         BlockingQueue<String> chunkQueue = new LinkedBlockingQueue<>(100);
         BlockingQueue<ChunkWithVector> vectorQueue = new LinkedBlockingQueue<>(100);
 
@@ -152,7 +136,7 @@ public class FileVectorizeConsumer {
                         downloadAndChunkStreaming(fileUrl, extension, chunkQueue);
                     } catch (Exception e) {
                         log.error("下载和分块失败", e);
-                        chunkQueue.offer("ERROR");
+                        putToQueueWithTimeout(chunkQueue, "ERROR");
                         throw new RuntimeException("下载失败", e);
                     }
                 }, executorService);
@@ -163,7 +147,7 @@ public class FileVectorizeConsumer {
                         vectorizeChunks(chunkQueue, vectorQueue);
                     } catch (Exception e) {
                         log.error("向量化失败", e);
-                        vectorQueue.offer(new ChunkWithVector("ERROR", null));
+                        putToQueueWithTimeout(vectorQueue, new ChunkWithVector("ERROR", null));
                         throw new RuntimeException("向量化失败", e);
                     }
                 }, executorService);
@@ -214,22 +198,15 @@ public class FileVectorizeConsumer {
             } finally {
                 connection.disconnect();
                 // 确保在所有处理完成后发送结束信号
-                chunkQueue.offer("EOF");
+                putToQueueWithTimeout(chunkQueue, "EOF");
                 log.info("已发送EOF信号。");
             }
 
         } catch (Exception e) {
             log.error("流式下载或解析文件失败: {}", fileUrl, e);
-            chunkQueue.offer("ERROR"); // 发送错误信号
+            putToQueueWithTimeout(chunkQueue, "ERROR");
             throw new RuntimeException("流式下载或解析失败", e);
         }
-    }
-
-    /**
-     * 判断文件类型是否为纯文本
-     */
-    private boolean isPlainText(String fileType) {
-        return fileType != null && PLAIN_TEXT_EXTENSIONS.contains(fileType.toLowerCase());
     }
 
     /**
@@ -246,7 +223,7 @@ public class FileVectorizeConsumer {
 
                 if (chunk == null) {
                     log.error("向量化线程等待文本块超过 {} 秒，判定为异常，终止处理", QUEUE_TIMEOUT_SECONDS);
-                    vectorQueue.offer(new ChunkWithVector("ERROR", null));
+                    putToQueueWithTimeout(vectorQueue, new ChunkWithVector("ERROR", null));
                     break;
                 }
 
@@ -255,12 +232,12 @@ public class FileVectorizeConsumer {
                     if (!batch.isEmpty()) {
                         processBatch(batch, vectorQueue);
                     }
-                    vectorQueue.offer(new ChunkWithVector("EOF", null)); // 结束信号
+                    putToQueueWithTimeout(vectorQueue, new ChunkWithVector("EOF", null));
                     break;
                 }
 
                 if ("ERROR".equals(chunk)) {
-                    vectorQueue.offer(new ChunkWithVector("ERROR", null)); // 错误信号
+                    putToQueueWithTimeout(vectorQueue, new ChunkWithVector("ERROR", null));
                     break;
                 }
 
@@ -275,10 +252,10 @@ public class FileVectorizeConsumer {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("向量化线程被中断");
-            vectorQueue.offer(new ChunkWithVector("ERROR", null));
+            putToQueueWithTimeout(vectorQueue, new ChunkWithVector("ERROR", null));
         } catch (Exception e) {
             log.error("向量化处理失败", e);
-            vectorQueue.offer(new ChunkWithVector("ERROR", null));
+            putToQueueWithTimeout(vectorQueue, new ChunkWithVector("ERROR", null));
             throw new RuntimeException("向量化失败", e);
         }
     }
@@ -292,7 +269,7 @@ public class FileVectorizeConsumer {
             List<float[]> vectors = embeddingService.embedTexts(new ArrayList<>(batch));
 
             for (int i = 0; i < batch.size(); i++) {
-                vectorQueue.offer(new ChunkWithVector(batch.get(i), vectors.get(i)));
+                putToQueueWithTimeout(vectorQueue, new ChunkWithVector(batch.get(i), vectors.get(i)));
             }
             log.info("批次向量化完成，生成 {} 个向量", vectors.size());
         } catch (Exception e) {
@@ -405,6 +382,23 @@ public class FileVectorizeConsumer {
             // 3. 更新文件处理状态等
         } catch (Exception ex) {
             log.error("记录失败信息时出现异常", ex);
+        }
+    }
+
+    /**
+     * 带中断处理和超时的阻塞 put
+     * 防止队列满时永久阻塞（虽然有外部超时控制，但这样更安全）
+     */
+    private <T> void putToQueueWithTimeout(BlockingQueue<T> queue, T item) {
+        try {
+            // 尝试放入，最多等待 60 秒（通常很快，除非死锁）
+            boolean success = queue.offer(item, 60, TimeUnit.SECONDS);
+            if (!success) {
+                log.error("严重错误：队列堵塞超过60秒，丢弃数据以防止系统挂起。Item: {}", item);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("放入队列被中断");
         }
     }
 

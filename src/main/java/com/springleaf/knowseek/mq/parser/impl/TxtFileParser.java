@@ -66,7 +66,7 @@ public class TxtFileParser extends AbstractFileParserStrategy {
             textToProcess = content;
             buffer.setLength(0); // 清空
         } else {
-            // 寻找最后一个换行符，保证我们处理的是完整的行
+            // 寻找最后一个换行符，保证处理的是完整的行
             int lastNewline = content.lastIndexOf('\n');
             if (lastNewline > -1) {
                 textToProcess = content.substring(0, lastNewline + 1);
@@ -81,7 +81,7 @@ public class TxtFileParser extends AbstractFileParserStrategy {
         List<String> chunks = splitTextRecursively(textToProcess);
 
         for (String chunk : chunks) {
-            chunkQueue.offer(chunk);
+            putToQueue(chunkQueue, chunk);
         }
 
         // 重置缓冲区并填入残留文本
