@@ -21,36 +21,40 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     @Override
     public List<float[]> embedTexts(List<String> texts) {
         List<float[]> allEmbeddings = new ArrayList<>();
+        int totalBatches = (texts.size() + MAX_BATCH_SIZE - 1) / MAX_BATCH_SIZE;
 
-        log.info("开始向量化处理，共 {} 个文本，将分 {} 批处理", texts.size(), (texts.size() + MAX_BATCH_SIZE - 1) / MAX_BATCH_SIZE);
-        
+        log.info("开始向量化处理，共 {} 个文本，分 {} 批处理", texts.size(), totalBatches);
+
         // 分批处理文本
         for (int i = 0; i < texts.size(); i += MAX_BATCH_SIZE) {
             int endIndex = Math.min(i + MAX_BATCH_SIZE, texts.size());
             List<String> batch = texts.subList(i, endIndex);
+            int batchNumber = (i / MAX_BATCH_SIZE) + 1;
             
             // 限流：除第一批外，每批之间等待
             if (i > 0) {
                 try {
-                    log.info("限流等待 {} 毫秒后处理第 {} 批（共 {} 个文本）", 
-                            RATE_LIMIT_DELAY_MS, (i / MAX_BATCH_SIZE) + 1, batch.size());
+                    log.debug("限流等待 {} 毫秒后处理第 {} 批（共 {} 个文本）",
+                            RATE_LIMIT_DELAY_MS, batchNumber, batch.size());
                     Thread.sleep(RATE_LIMIT_DELAY_MS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException("向量化处理被中断", e);
                 }
-            } else {
-                log.info("开始处理第 1 批（共 {} 个文本）", batch.size());
             }
-            
+            log.debug("正在向量化第 {}/{} 批（{}个文本）",
+                    batchNumber, totalBatches, batch.size());
+
             // 对当前批次进行向量化
             List<float[]> batchEmbeddings = embeddingModel.embed(batch);
-
             allEmbeddings.addAll(batchEmbeddings);
-            log.info("第 {} 批处理完成，已生成 {} 个向量", (i / MAX_BATCH_SIZE) + 1, allEmbeddings.size());
+
+            log.debug("第 {} 批向量化完成，本批生成 {} 个向量",
+                    batchNumber, batchEmbeddings.size());
         }
-        
-        log.info("所有文本向量化完成，共生成 {} 个向量", allEmbeddings.size());
+
+        log.info("向量化处理完成，共 {} 个文本生成 {} 个向量",
+                texts.size(), allEmbeddings.size());
         return allEmbeddings;
     }
 }
