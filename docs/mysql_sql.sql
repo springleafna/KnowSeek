@@ -87,3 +87,23 @@ CREATE TABLE tb_message (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '消息创建时间',
     metadata JSON DEFAULT NULL COMMENT '扩展字段，如模型、耗时、插件调用等'
 ) COMMENT='AI对话消息记录，按会话隔离';
+
+CREATE TABLE tb_operation_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    module_name VARCHAR(100) NOT NULL COMMENT '模块名称',
+    ip_address VARCHAR(45) NOT NULL COMMENT '操作IP地址',
+    operation_type VARCHAR(50) NOT NULL COMMENT '操作类型（如：新增、修改、删除等）',
+    description VARCHAR(255) NOT NULL COMMENT '操作描述',
+    request_url VARCHAR(255) NOT NULL COMMENT '请求URL',
+    request_method VARCHAR(10) NOT NULL COMMENT '请求方法（GET/POST/PUT/DELETE等）',
+    request_params TEXT COMMENT '请求参数（JSON格式）',
+    response_result VARCHAR(20) NOT NULL COMMENT '响应结果（如：success/fail）',
+    response_message VARCHAR(500) COMMENT '响应消息',
+    operation_time DATETIME(3) NOT NULL COMMENT '操作时间（精确到毫秒）',
+    execution_time INT UNSIGNED NOT NULL COMMENT '执行耗时（单位：毫秒）',
+
+    PRIMARY KEY (id),
+    KEY idx_user_id (user_id),
+    KEY idx_operation_time (operation_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';

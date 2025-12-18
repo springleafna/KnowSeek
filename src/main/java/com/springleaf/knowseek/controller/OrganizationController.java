@@ -3,6 +3,8 @@ package com.springleaf.knowseek.controller;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import com.github.pagehelper.PageInfo;
 import com.springleaf.knowseek.common.Result;
+import com.springleaf.knowseek.log.OperationLogRecord;
+import com.springleaf.knowseek.log.OperationType;
 import com.springleaf.knowseek.model.dto.OrganizationAddDTO;
 import com.springleaf.knowseek.model.dto.OrganizationAddSubDTO;
 import com.springleaf.knowseek.model.dto.OrganizationAssignDTO;
@@ -32,6 +34,7 @@ public class OrganizationController {
      * 选择主组织标签
      */
     @PutMapping("/setPrimary")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.UPDATE, description = "设置主组织")
     public Result<Void> choosePrimaryOrg(@NotBlank(message = "组织标签不能为空或空字符串") @RequestParam String orgTag) {
         organizationService.choosePrimaryOrg(orgTag);
         return Result.success();
@@ -41,6 +44,7 @@ public class OrganizationController {
      * 获取用户组织列表
      */
     @GetMapping("/allOrg")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.QUERY, description = "获取用户组织列表")
     public Result<List<OrganizationVO>> getUserAllOrg() {
         List<OrganizationVO> organizationVOList = organizationService.getUserAllOrg();
         return Result.success(organizationVOList);
@@ -51,6 +55,7 @@ public class OrganizationController {
      */
     @SaCheckRole("admin")
     @PostMapping("/create")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.INSERT, description = "创建组织")
     public Result<Void> createOrg(@RequestBody @Valid OrganizationAddDTO organizationAddDTO) {
         organizationService.createOrg(organizationAddDTO);
         return Result.success();
@@ -61,6 +66,7 @@ public class OrganizationController {
      */
     @SaCheckRole("admin")
     @PostMapping("/assign")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.UPDATE, description = "为用户分配组织")
     public Result<Void> assignOrgToUser(@RequestBody @Valid OrganizationAssignDTO organizationAssignDTO) {
         organizationService.assignOrgToUser(organizationAssignDTO);
         return Result.success();
@@ -71,6 +77,7 @@ public class OrganizationController {
      */
     @SaCheckRole("admin")
     @PostMapping("/addSub")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.INSERT, description = "添加下级组织")
     public Result<Void> addSubOrg(@RequestBody @Valid OrganizationAddSubDTO organizationAddSubDTO) {
         organizationService.addSubOrg(organizationAddSubDTO);
         return Result.success();
@@ -81,26 +88,29 @@ public class OrganizationController {
      */
     @SaCheckRole("admin")
     @PutMapping("/update")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.UPDATE, description = "编辑组织信息")
     public Result<Void> updateOrg(@RequestBody @Valid OrganizationUpdateDTO organizationUpdateDTO) {
         organizationService.updateOrg(organizationUpdateDTO);
         return Result.success();
     }
-    
+
     /**
      * Admin：查询所有未删除的组织列表（分页）
      */
     @SaCheckRole("admin")
     @GetMapping("/list")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.QUERY, description = "查询组织列表")
     public Result<PageInfo<OrganizationListVO>> listAllOrganizations(@Valid OrganizationPageDTO pageDTO) {
         PageInfo<OrganizationListVO> pageInfo = organizationService.listAllOrganizations(pageDTO);
         return Result.success(pageInfo);
     }
-    
+
     /**
      * Admin：获取组织树形结构
      */
     @SaCheckRole("admin")
     @GetMapping("/tree")
+    @OperationLogRecord(moduleName = "组织管理", operationType = OperationType.QUERY, description = "获取组织树形结构")
     public Result<List<OrganizationTreeVO>> getOrganizationTree() {
         List<OrganizationTreeVO> treeList = organizationService.getOrganizationTree();
         return Result.success(treeList);
