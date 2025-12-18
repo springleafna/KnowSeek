@@ -23,4 +23,29 @@
         VALUES (#{userId}, #{moduleName}, #{ipAddress}, #{operationType}, #{description}, #{requestUrl}, #{requestMethod}, #{requestParams}, #{responseResult}, #{responseMessage}, #{operationTime}, #{executionTime})
     </insert>
 
+    <select id="selectByCondition" resultMap="resultMap">
+        SELECT * FROM tb_operation_log
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="moduleName != null and moduleName != ''">
+                AND module_name = #{moduleName}
+            </if>
+            <if test="operationType != null and operationType != ''">
+                AND operation_type = #{operationType}
+            </if>
+            <if test="responseResult != null and responseResult != ''">
+                AND response_result = #{responseResult}
+            </if>
+            <if test="startTime != null and startTime != ''">
+                AND operation_time &gt;= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND operation_time &lt;= #{endTime}
+            </if>
+        </where>
+        ORDER BY operation_time DESC
+    </select>
+
 </mapper>
