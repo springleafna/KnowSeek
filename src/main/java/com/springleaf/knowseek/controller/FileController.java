@@ -65,7 +65,7 @@ public class FileController {
      * 获取上传进度
      */
     @GetMapping("/progress")
-    @OperationLogRecord(moduleName = "文件管理", operationType = OperationType.QUERY, description = "获取上传进度")
+    @OperationLogRecord(moduleName = "文件管理", operationType = OperationType.QUERY, description = "获取上传进度", enabled = false)
     public Result<UploadProgressVO> getUploadProgress(@NotNull(message = "uploadId不能为空") @RequestParam String uploadId,
                                                       @NotNull(message = "fileKey不能为空") @RequestParam String fileKey) {
         return Result.success(fileService.getUploadProgress(uploadId, fileKey));
@@ -75,7 +75,7 @@ public class FileController {
      * 保存分片信息
      */
     @PostMapping("/chunk")
-    @OperationLogRecord(moduleName = "文件管理", operationType = OperationType.UPLOAD, description = "上传文件分片")
+    @OperationLogRecord(moduleName = "文件管理", operationType = OperationType.UPLOAD, description = "上传文件分片", enabled = false)
     public Result<Void> uploadChunk(@RequestBody @Valid FileUploadChunkDTO fileUploadChunkDTO) {
         fileService.uploadChunk(fileUploadChunkDTO);
         return Result.success();

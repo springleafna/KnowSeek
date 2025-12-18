@@ -37,6 +37,11 @@ public class OperationLogAspect {
 
     @Around("@annotation(operationLogRecord)")
     public Object around(ProceedingJoinPoint joinPoint, OperationLogRecord operationLogRecord) throws Throwable {
+        // 如果禁用日志记录，直接执行目标方法
+        if (!operationLogRecord.enabled()) {
+            return joinPoint.proceed();
+        }
+
         long startTime = System.currentTimeMillis();
 
         // 获取请求信息
@@ -68,13 +73,17 @@ public class OperationLogAspect {
             operationLog.setUserId(0L);
         }
 
-        // 设置请求参数
-        try {
-            String params = getRequestParams(joinPoint, signature);
-            operationLog.setRequestParams(params);
-        } catch (Exception e) {
-            log.warn("获取请求参数失败: {}", e.getMessage());
-            operationLog.setRequestParams("{}");
+        // 根据 saveParams 决定是否保存请求参数
+        if (operationLogRecord.saveParams()) {
+            try {
+                String params = getRequestParams(joinPoint, signature);
+                operationLog.setRequestParams(params);
+            } catch (Exception e) {
+                log.warn("获取请求参数失败: {}", e.getMessage());
+                operationLog.setRequestParams("{}");
+            }
+        } else {
+            operationLog.setRequestParams("[不记录]");
         }
 
         Object result;
@@ -82,15 +91,20 @@ public class OperationLogAspect {
             // 执行目标方法
             result = joinPoint.proceed();
 
-            // 记录成功信息
-            operationLog.setResponseResult("success");
-            if (result instanceof Result<?> r) {
-                operationLog.setResponseMessage(r.getMessage());
+            // 根据 ignoreResult 决定是否记录响应结果
+            if (!operationLogRecord.ignoreResult()) {
+                operationLog.setResponseResult("success");
+                if (result instanceof Result<?> r) {
+                    operationLog.setResponseMessage(r.getMessage());
+                }
+            } else {
+                operationLog.setResponseResult("success");
+                operationLog.setResponseMessage("[不记录]");
             }
 
             return result;
         } catch (Throwable e) {
-            // 记录失败信息
+            // 异常信息始终记录，便于排查问题
             operationLog.setResponseResult("fail");
             String errorMsg = e.getMessage();
             if (errorMsg != null && errorMsg.length() > 500) {
