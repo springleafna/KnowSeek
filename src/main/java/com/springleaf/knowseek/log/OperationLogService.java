@@ -2,6 +2,7 @@ package com.springleaf.knowseek.log;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.springleaf.knowseek.enums.UserRoleEnum;
 import com.springleaf.knowseek.mapper.mysql.OperationLogMapper;
 import com.springleaf.knowseek.model.dto.OperationLogPageDTO;
 import com.springleaf.knowseek.model.entity.OperationLog;
@@ -60,6 +61,8 @@ public class OperationLogService {
     private OperationLogVO convertToVO(OperationLog operationLog) {
         OperationLogVO vo = new OperationLogVO();
         BeanUtils.copyProperties(operationLog, vo);
+        UserRoleEnum roleEnum = UserRoleEnum.fromValue(operationLog.getRoleName());
+        vo.setRoleName(roleEnum != null ? roleEnum.getDescription() : null);
         return vo;
     }
 }

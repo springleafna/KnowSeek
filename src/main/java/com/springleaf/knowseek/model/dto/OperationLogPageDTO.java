@@ -47,4 +47,9 @@ public class OperationLogPageDTO {
      * 结束时间（yyyy-MM-dd HH:mm:ss）
      */
     private String endTime;
+
+    /**
+     * 用户角色（ADMIN/USER）
+     */
+    private String roleName;
 }

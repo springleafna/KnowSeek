@@ -74,4 +74,9 @@ public class OperationLogVO {
      * 执行耗时（毫秒）
      */
     private Long executionTime;
+
+    /**
+     * 用户角色名称（管理员/普通用户）
+     */
+    private String roleName;
 }

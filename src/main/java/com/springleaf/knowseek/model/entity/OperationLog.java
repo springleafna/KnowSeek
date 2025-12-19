@@ -80,4 +80,9 @@ public class OperationLog {
      * 执行耗时（毫秒）
      */
     private Long executionTime;
+
+    /**
+     * 用户角色（关联查询字段，非持久化）
+     */
+    private String roleName;
 }

@@ -12,14 +12,15 @@ public enum UserRoleEnum {
     /**
      * 普通用户
      */
-    USER("USER"),
+    USER("USER", "普通用户"),
 
     /**
      * 管理员
      */
-    ADMIN("ADMIN");
+    ADMIN("ADMIN", "管理员");
 
     private final String value;
+    private final String description;
 
     /**
      * 根据字符串值获取对应的枚举

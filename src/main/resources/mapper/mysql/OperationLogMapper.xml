@@ -16,6 +16,7 @@
         <result property="responseMessage" column="response_message"/>
         <result property="operationTime" column="operation_time"/>
         <result property="executionTime" column="execution_time"/>
+        <result property="roleName" column="role_name"/>
     </resultMap>
 
     <insert id="insert">
@@ -24,28 +25,33 @@
     </insert>
 
     <select id="selectByCondition" resultMap="resultMap">
-        SELECT * FROM tb_operation_log
+        SELECT ol.*, u.role AS role_name
+        FROM tb_operation_log ol
+        LEFT JOIN tb_user u ON ol.user_id = u.id
         <where>
             <if test="userId != null">
-                AND user_id = #{userId}
+                AND ol.user_id = #{userId}
             </if>
             <if test="moduleName != null and moduleName != ''">
-                AND module_name = #{moduleName}
+                AND ol.module_name LIKE CONCAT('%', #{moduleName}, '%')
             </if>
             <if test="operationType != null and operationType != ''">
-                AND operation_type = #{operationType}
+                AND ol.operation_type = #{operationType}
             </if>
             <if test="responseResult != null and responseResult != ''">
-                AND response_result = #{responseResult}
+                AND ol.response_result = #{responseResult}
             </if>
             <if test="startTime != null and startTime != ''">
-                AND operation_time &gt;= #{startTime}
+                AND ol.operation_time &gt;= #{startTime}
             </if>
             <if test="endTime != null and endTime != ''">
-                AND operation_time &lt;= #{endTime}
+                AND ol.operation_time &lt;= #{endTime}
+            </if>
+            <if test="roleName != null and roleName != ''">
+                AND u.role = #{roleName}
             </if>
         </where>
-        ORDER BY operation_time DESC
+        ORDER BY ol.operation_time DESC
     </select>
 
 </mapper>
