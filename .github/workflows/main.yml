@@ -38,7 +38,6 @@ jobs:
           remote_user: ${{ secrets.SERVER_USER }}
           remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
           remote_port: ${{ secrets.SERVER_PORT }}
-          debug: true
 
       # 5. 在服务器上构建镜像并部署
       - name: Deploy on server
