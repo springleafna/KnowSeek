@@ -1,6 +1,7 @@
 services:
   knowseek-app:
-    build: .
+    # 阿里云公网地址，加上 :latest 标签
+    image: crpi-uzhlbflj0lsdpu7g.cn-hangzhou.personal.cr.aliyuncs.com/springleafna/knowseek:latest
     container_name: knowseek-springboot
     ports:
       - "8181:8181"
