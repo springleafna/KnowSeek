@@ -13,4 +13,5 @@ public class VectorRecordWithDistanceBO {
     private String chunkText;
     private Integer chunkIndex;
     private Double distance; // pgvector 返回的距离（越小越相似）
+    private Double similarity; // 余弦相似度
 }

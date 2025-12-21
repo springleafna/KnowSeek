@@ -24,10 +24,10 @@ CREATE INDEX idx_tb_vector_record_knowledge_base ON tb_vector_record (knowledge_
 CREATE INDEX idx_tb_vector_record_user ON tb_vector_record (user_id);
 
 -- 如果要做向量相似度搜索，强烈建议加 IVFFLAT 或 HNSW 索引（pgvector 支持）
-CREATE INDEX ON tb_vector_record
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);  -- 根据数据量调整 lists，一般为数据量的 1/10 ~ 1/100
+-- 方式 1: HNSW (推荐，速度快，精度高)
+CREATE INDEX idx_tb_vector_record_embedding
+    ON tb_vector_record USING hnsw (embedding vector_cosine_ops);
 
--- 或者用 HNSW（PostgreSQL 17+ 或 pgvector 0.5+）
--- CREATE INDEX ON tb_vector_record
--- USING hnsw (embedding vector_cosine_ops);
+-- 或者 方式 2: IVFFlat (内存占用少，适合数据量巨大但精度要求稍低的场景)
+-- CREATE INDEX idx_tb_vector_record_embedding
+-- ON tb_vector_record USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);

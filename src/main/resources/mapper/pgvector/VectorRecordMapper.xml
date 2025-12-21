@@ -26,6 +26,7 @@
         <result column="chunk_text" property="chunkText" />
         <result column="embedding" property="embedding" />
         <result column="distance" property="distance" />
+        <result column="similarity" property="similarity" />
     </resultMap>
 
     <!-- 插入记录 -->
@@ -78,7 +79,10 @@
                     chunk_index,
                     chunk_text,
                     embedding,
-                    (embedding <-> #{queryVector}) AS distance
+                    -- 1. 计算原始距离 (用于排序和索引优化)
+                    (embedding <=> #{queryVector}) AS distance,
+                    -- 2. 计算相似度 (用于直观过滤，范围 0~1)
+                    (1 - (embedding <=> #{queryVector})) AS similarity
                 FROM tb_vector_record
                 WHERE user_id = #{userId}
                   AND knowledge_base_id = #{knowledgeBaseId}
@@ -86,8 +90,8 @@
             )
             SELECT *
             FROM candidates
-            WHERE distance < 1.10
-            ORDER BY distance
+            WHERE similarity > 0.4
+            ORDER BY distance ASC
             LIMIT #{topK}
         ]]>
     </select>
