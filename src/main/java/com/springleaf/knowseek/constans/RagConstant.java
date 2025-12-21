@@ -8,7 +8,7 @@ public final class RagConstant {
     /**
      * 检索时最多召回的文档数量
      */
-    public static final int TOPK = 15;
+    public static final int TOPK = 50;
 
     /**
      * 召回后最多保留的文件数

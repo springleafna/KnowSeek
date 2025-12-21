@@ -399,6 +399,10 @@ public class ChatServiceImpl implements ChatService {
         return StringUtils.defaultIfBlank(fileName, "未知文件_" + fileId);
     }
 
+    /**
+     * 召回流程：
+     * 先从数据库全局召回满足相似度阈值的 TopK 个候选分片，按文件分组后筛选出最相关的的前 MAX_FILES 个文件，最后在这些文件中各保留前 CHUNKS_PER_FILE 个最匹配的分片。
+     */
     private List<VectorRecord> performEnhancedRetrieval(VectorRecordSearchBO searchBO) {
         // Step 1: 召回候选（带 distance）
         List<VectorRecordWithDistanceBO> candidates = vectorRecordMapper.findTopKByEmbeddingWithDistance(searchBO);
@@ -426,12 +430,12 @@ public class ChatServiceImpl implements ChatService {
         // Step 4: 按文件相关性排序（distance 越小越相关）
         fileRelevances.sort(Comparator.comparing(FileRelevance::getBestDistance));
 
-        // Step 5: 选择最相关的 1~2 个文件
+        // Step 5: 选择最相关的 MAX_FILES 个文件
         List<VectorRecord> selected = new ArrayList<>();
 
         for (int i = 0; i < Math.min(RagConstant.MAX_FILES, fileRelevances.size()); i++) {
             List<VectorRecordWithDistanceBO> chunks = fileRelevances.get(i).getChunks();
-            // 对该文件内的 chunks 按 distance 排序，取 top chunksPerFile
+            // Step 6: 对该文件内的 chunks 按 distance 排序，取 CHUNKS_PER_FILE 个分片
             List<VectorRecordWithDistanceBO> topChunks = chunks.stream()
                     .sorted(Comparator.comparing(VectorRecordWithDistanceBO::getDistance))
                     .limit(RagConstant.CHUNKS_PER_FILE)
